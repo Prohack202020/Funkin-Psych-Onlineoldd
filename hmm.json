@@ -2,8 +2,10 @@
   "dependencies": [
     {
       "name": "lime",
-      "type": "haxelib",
-      "version": "8.1.2"
+      "type": "git",
+      "dir": null,
+      "ref": "develop",
+      "url": "https://github.com/mcagabe19-stuff/lime"
     },
     {
       "name": "openfl",
@@ -32,8 +34,10 @@
     },
     {
       "name": "hxcpp",
-      "type": "haxelib",
-      "version": "4.3.2"
+      "type": "git",
+      "dir": null,
+      "ref": "master",
+      "url": "https://github.com/mcagabe19-stuff/hxcpp"
     },
     {
       "name": "tjson",
@@ -48,12 +52,12 @@
     {
       "name": "hxCodec",
       "type": "haxelib",
-      "version": "3.0.2"
+      "version": "2.6.0"
     },
     {
       "name": "SScript",
       "type": "haxelib",
-      "version": "17.0.618"
+      "version": "17.2.618"
     },
     {
       "name": "discord_rpc",
@@ -88,6 +92,13 @@
       "name": "away3d",
       "type": "haxelib",
       "version": "5.0.9"
+    },
+    {
+      "name": "extension-androidtools",
+      "type": "git",
+      "dir": null,
+      "ref": "main",
+      "url": "https://github.com/MAJigsaw77/extension-androidtools.git"
     }
   ]
 }
