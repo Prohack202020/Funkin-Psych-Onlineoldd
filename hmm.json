@@ -56,10 +56,8 @@
     },
     {
       "name": "SScript",
-      "type": "git",
-      "dir": null,
-      "ref": "main",
-      "url": "https://github.com/MobilePorting/SScript-Online"
+      "type": "haxelib",
+      "version": "7.7.0"
     },
     {
       "name": "discord_rpc",
