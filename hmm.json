@@ -2,10 +2,8 @@
   "dependencies": [
     {
       "name": "lime",
-      "type": "git",
-      "dir": null,
-      "ref": "develop",
-      "url": "https://github.com/mcagabe19-stuff/lime.git"
+      "type": "haxelib",
+      "version": "8.0.2"
     },
     {
       "name": "openfl",
@@ -65,23 +63,6 @@
       "dir": null,
       "ref": "master",
       "url": "https://github.com/Aidan63/linc_discord-rpc"
-    },
-    {
-      "name": "HtmlParser",
-      "type": "haxelib",
-      "version": "3.4.0"
-    },
-    {
-      "name": "flxanimate",
-      "type": "git",
-      "dir": null,
-      "ref": "dev",
-      "url": "https://github.com/ShadowMario/flxanimate"
-    },
-    {
-      "name": "json2object",
-      "type": "haxelib",
-      "version": "3.11.0"
     },
     {
       "name": "linc_luajit",
