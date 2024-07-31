@@ -1,6 +1,5 @@
 package states.editors;
 
-import online.states.SkinsState;
 import animateatlas.AtlasFrameMaker;
 
 import flixel.FlxObject;
@@ -41,15 +40,13 @@ class CharacterEditorState extends MusicBeatState
 	var curAnim:Int = 0;
 	var daAnim:String = 'spooky';
 	var goToPlayState:Bool = true;
-	var goToSkins:Bool = true;
 	var camFollow:FlxObject;
 
-	public function new(daAnim:String = 'spooky', goToPlayState:Bool = true, ?goToSkins:Bool = false)
+	public function new(daAnim:String = 'spooky', goToPlayState:Bool = true)
 	{
 		super();
 		this.daAnim = daAnim;
 		this.goToPlayState = goToPlayState;
-		this.goToSkins = goToSkins;
 	}
 
 	var UI_box:FlxUITabMenu;
@@ -1060,7 +1057,7 @@ class CharacterEditorState extends MusicBeatState
 	}
 
 	function updatePresence() {
-		#if DISCORD_ALLOWED
+		#if desktop
 		// Updating Discord Rich Presence
 		DiscordClient.changePresence("Character Editor", "Character: " + daAnim, leHealthIcon.getCharacter());
 		#end
@@ -1092,13 +1089,10 @@ class CharacterEditorState extends MusicBeatState
 
 		if(!charDropDown.dropPanel.visible) {
 			if (FlxG.keys.justPressed.ESCAPE) {
-				if (goToSkins) {
-					FlxG.switchState(() -> new SkinsState());
-				}
-				else if(goToPlayState) {
-					FlxG.switchState(() -> new PlayState());
+				if(goToPlayState) {
+					MusicBeatState.switchState(new PlayState());
 				} else {
-					FlxG.switchState(() -> new states.editors.MasterEditorMenu());
+					MusicBeatState.switchState(new states.editors.MasterEditorMenu());
 					FlxG.sound.playMusic(Paths.music('freakyMenu'));
 				}
 				FlxG.mouse.visible = false;

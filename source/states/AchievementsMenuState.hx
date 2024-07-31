@@ -14,7 +14,7 @@ class AchievementsMenuState extends MusicBeatState
 	private var descText:FlxText;
 
 	override function create() {
-		#if DISCORD_ALLOWED
+		#if desktop
 		DiscordClient.changePresence("Achievements Menu", null);
 		#end
 
@@ -72,7 +72,7 @@ class AchievementsMenuState extends MusicBeatState
 
 		if (controls.BACK) {
 			FlxG.sound.play(Paths.sound('cancelMenu'));
-			FlxG.switchState(() -> new MainMenuState());
+			MusicBeatState.switchState(new MainMenuState());
 		}
 	}
 

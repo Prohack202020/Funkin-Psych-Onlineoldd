@@ -138,7 +138,7 @@ class VisualsUISubState extends BaseOptionsMenu
 		addOption(option);
 		#end
 
-		#if DISCORD_ALLOWED
+		#if desktop
 		var option:Option = new Option('Discord Rich Presence',
 			"Uncheck this to prevent accidental leaks, it will hide the Application from your \"Playing\" box on Discord",
 			'discordRPC',
@@ -149,12 +149,6 @@ class VisualsUISubState extends BaseOptionsMenu
 		var option:Option = new Option('Combo Stacking',
 			"If unchecked, Ratings and Combo won't stack, saving on System Memory and making them easier to read",
 			'comboStacking',
-			'bool');
-		addOption(option);
-
-		var option:Option = new Option('Debug Mode',
-			"If checked, enables debug warnings etc.",
-			'debugMode',
 			'bool');
 		addOption(option);
 

@@ -16,8 +16,6 @@ import backend.Song;
 import backend.Section;
 import states.stages.objects.TankmenBG;
 
-import online.GameClient;
-
 typedef CharacterFile = {
 	var animations:Array<AnimArray>;
 	var image:String;
@@ -31,7 +29,6 @@ typedef CharacterFile = {
 	var flip_x:Bool;
 	var no_antialiasing:Bool;
 	var healthbar_colors:Array<Int>;
-	@:optional var vocals_file:String;
 }
 
 typedef AnimArray = {
@@ -50,7 +47,6 @@ class Character extends FlxSprite
 
 	public var isPlayer:Bool = false;
 	public var curCharacter:String = DEFAULT_CHARACTER;
-	public var isMissing:Bool = false;
 
 	public var colorTween:FlxTween;
 	public var holdTimer:Float = 0;
@@ -62,7 +58,6 @@ class Character extends FlxSprite
 	public var idleSuffix:String = '';
 	public var danceIdle:Bool = false; //Character use "danceLeft" and "danceRight" instead of "idle"
 	public var skipDance:Bool = false;
-	public var vocalsFile:String = '';
 
 	public var healthIcon:String = 'face';
 	public var animationsArray:Array<AnimArray> = [];
@@ -70,7 +65,7 @@ class Character extends FlxSprite
 	public var positionArray:Array<Float> = [0, 0];
 	public var cameraPosition:Array<Float> = [0, 0];
 
-	//public var hasMissAnimations:Bool = true;
+	public var hasMissAnimations:Bool = false;
 
 	//Used on Character Editor
 	public var imageFile:String = '';
@@ -152,8 +147,6 @@ class Character extends FlxSprite
 				if(json.healthbar_colors != null && json.healthbar_colors.length > 2)
 					healthColorArray = json.healthbar_colors;
 
-				vocalsFile = json.vocals_file != null ? json.vocals_file : '';
-
 				// antialiasing
 				noAntialiasing = (json.no_antialiasing == true);
 				antialiasing = ClientPrefs.data.antialiasing ? !noAntialiasing : false;
@@ -184,7 +177,7 @@ class Character extends FlxSprite
 		}
 		originalFlipX = flipX;
 
-		//if(animOffsets.exists('singLEFTmiss') || animOffsets.exists('singDOWNmiss') || animOffsets.exists('singUPmiss') || animOffsets.exists('singRIGHTmiss')) hasMissAnimations = true;
+		if(animOffsets.exists('singLEFTmiss') || animOffsets.exists('singDOWNmiss') || animOffsets.exists('singUPmiss') || animOffsets.exists('singRIGHTmiss')) hasMissAnimations = true;
 		recalculateDanceIdle();
 		dance();
 
@@ -228,7 +221,7 @@ class Character extends FlxSprite
 		{
 			if(heyTimer > 0)
 			{
-				heyTimer -= elapsed * (PlayState.instance?.playbackRate ?? 1);
+				heyTimer -= elapsed * PlayState.instance.playbackRate;
 				if(heyTimer <= 0)
 				{
 					if(specialAnim && animation.curAnim.name == 'hey' || animation.curAnim.name == 'cheer')
@@ -244,7 +237,7 @@ class Character extends FlxSprite
 				specialAnim = false;
 				dance();
 			}
-			else if ((animation.curAnim.name.endsWith('miss') || isMissing) && animation.curAnim.finished)
+			else if (animation.curAnim.name.endsWith('miss') && animation.curAnim.finished)
 			{
 				dance();
 				animation.finish();
@@ -267,15 +260,10 @@ class Character extends FlxSprite
 
 			if (animation.curAnim.name.startsWith('sing'))
 				holdTimer += elapsed;
-			else if (PlayState.isCharacterPlayer(this) || GameClient.isConnected())
+			else if(isPlayer)
 				holdTimer = 0;
 
-			// (!GameClient.isConnected() && PlayState.instance.getPlayer() != this) // check for null or not connected
-			// || PlayState.instance.getPlayer()
-
-			if ((!GameClient.isConnected() || GameClient.getStaticPlayer(false) != this) // check for not connected
-				&& GameClient.getStaticPlayer() != this && // check if not player/opp
-				holdTimer >= Conductor.stepCrochet * (0.0011 / (FlxG.sound.music != null ? FlxG.sound.music.pitch : 1)) * singDuration)
+			if (!isPlayer && holdTimer >= Conductor.stepCrochet * (0.0011 / (FlxG.sound.music != null ? FlxG.sound.music.pitch : 1)) * singDuration)
 			{
 				dance();
 				holdTimer = 0;
@@ -313,51 +301,7 @@ class Character extends FlxSprite
 
 	public function playAnim(AnimName:String, Force:Bool = false, Reversed:Bool = false, Frame:Int = 0):Void
 	{
-		if (AnimName == null)
-			return;
-
-		colorTransform.redMultiplier = 1;
-		colorTransform.greenMultiplier = 1;
-		colorTransform.blueMultiplier = 1;
-
 		specialAnim = false;
-		isMissing = AnimName.endsWith("miss");
-
-		if (AnimName == "taunt") {
-			specialAnim = true;
-			heyTimer = 1;
-		}
-
-		@:privateAccess
-		if (animation._animations.get(AnimName) == null) {
-			if (AnimName.endsWith("-alt")) {
-				AnimName = AnimName.substring(0, AnimName.length - "-alt".length);
-			}
-
-			if (AnimName.endsWith("miss")) {
-				AnimName = AnimName.substring(0, AnimName.length - "miss".length);
-				colorTransform.redMultiplier = 0.5;
-				colorTransform.greenMultiplier = 0.3;
-				colorTransform.blueMultiplier = 0.5;
-			}
-
-			if (AnimName == "taunt") {
-				AnimName = "hey";
-			}
-
-			if (AnimName == "hey" && curCharacter.startsWith("tankman") && animation._animations.get(AnimName) == null) {
-				AnimName = "singUP-alt";
-			}
-
-			if (animation._animations.get(AnimName) == null) {
-				if (AnimName == "hey") {
-					specialAnim = false;
-					heyTimer = 0;
-				}
-				return;
-			}
-		}
-
 		animation.play(AnimName, Force, Reversed, Frame);
 
 		var daOffset = animOffsets.get(AnimName);
@@ -367,6 +311,9 @@ class Character extends FlxSprite
 		}
 		else
 			offset.set(0, 0);
+
+		if (scale.x != 1. || scale.y != 1.)
+			updateHitbox();
 
 		if (curCharacter.startsWith('gf'))
 		{

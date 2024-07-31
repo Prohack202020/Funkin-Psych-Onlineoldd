@@ -2,10 +2,7 @@
 <project>
 	<!-- _________________________ Application Settings _________________________ -->
 
-	<app title="Friday Night Funkin': Psych Online" file="PsychEngine"  main="Main" version="0.6.0" />
-	<app if="desktop" packageName="com.shadowmario.psychengine" package="com.shadowmario.psychengine" company="ShadowMario" />
-	<!-- leaving mobile stuff here, if someone manages to compile this project to android then i'll be willing to merge that  -->
-	<app if="mobile" title='Psych Online' packageName="snirozu.psychonline" package="snirozu.psychonline" company="Snirozu" />
+	<app title="Friday Night Funkin': Psych Online" file="PsychEngine" packageName="com.shadowmario.psychengine" package="com.shadowmario.psychengine" main="Main" version="0.2.8" company="ShadowMario" />
 
 	<!--Switch Export with Unique ApplicationID and Icon-->
 	<set name="APP_ID" value="0x0100f6c013bbc000" />
@@ -23,15 +20,13 @@
 	
 	<!-- ______________________ PSYCH ENGINE CUSTOMIZATION ______________________ -->
 
-	<define name="MODS_ALLOWED" />
-	<define name="HSCRIPT_ALLOWED" unless="mobile" /> <!-- sscript isn't compatible with android (crashes clang?) -->
-	<define name="LUA_ALLOWED" if="cpp" />
+	<define name="MODS_ALLOWED" if="desktop" />
+	<define name="HSCRIPT_ALLOWED" if="desktop" />
+	<define name="LUA_ALLOWED" if="desktop" />
 	<define name="ACHIEVEMENTS_ALLOWED" />
-	<define name="DISCORD_ALLOWED" if="windows" unless="hl" />
 	<define name="VIDEOS_ALLOWED" if="windows || linux || android" unless="32bits"/>
 	<define name="PSYCH_WATERMARKS"/> <!-- DELETE THIS TO REMOVE WATERMARKS/DEV NAMES ON TITLE SCREEN -->
 	<define name="TITLE_SCREEN_EASTER_EGG" if="officialBuild"/> <!-- DELETE THE if="officialBuild" for enabling this on an unofficial build -->
-	<define name="RAR_SUPPORTED" if="windows" unless="hl" />
 
 	<!-- ____________________________ Window Settings ___________________________ -->
 
@@ -59,6 +54,9 @@
 	<classpath name="source" />
 
 	<!-- __________________________ Game Assets & Etc. __________________________ -->
+	
+	<!-- Turn on Crash Handler -->
+	<define name="CRASH_HANDLER" if="desktop release" />
 
 	<!-- Preload Assets -->
 	<define name="PRELOAD_ALL" unless="web" />
@@ -112,12 +110,9 @@
 	<haxelib name="linc_luajit" if="LUA_ALLOWED"/>
 	<haxelib name="SScript" if="HSCRIPT_ALLOWED"/>
 	<haxelib name="hxCodec" if="VIDEOS_ALLOWED"/>
-	<haxelib name="discord_rpc" if="DISCORD_ALLOWED"/>
+	<haxelib name="discord_rpc" if="desktop"/>
 	<haxelib name="tjson" />
 	<haxelib name="colyseus" />
-	<haxelib name="HtmlParser" />
-	<haxelib name="UnRAR" />
-	<haxelib name="away3d" /> <!-- exposing away so people can use it with lua/hscript or whatever -->
 
 	<haxedef name="openflPos" />
 	<haxedef name="hscriptPos" />
@@ -162,13 +157,10 @@
 	<haxedef name="NAPE_RELEASE_BUILD" unless="debug" />
 	
 	<!--Used for Izzy Engine's crash handler-->
-	<haxedef name="HXCPP_CHECK_POINTER" />
-	<haxedef name="HXCPP_STACK_LINE" />
-	<haxedef name="HXCPP_STACK_TRACE" />
-	<haxedef name="HXCPP_DEBUG_LINK" />
+	<haxedef name="HXCPP_CHECK_POINTER" if="CRASH_HANDLER" />
+	<haxedef name="HXCPP_STACK_LINE" if="CRASH_HANDLER" />
+	<haxedef name="HXCPP_STACK_TRACE" if="CRASH_HANDLER" />
 	<haxedef name='no-deprecation-warnings' />
-
-	<haxedef name='NO_PRECOMPILED_HEADERS' if="linux" />
 	
 	<!--Macro fixes-->
 	<haxeflag name="--macro" value="allowPackage('flash')" />
@@ -184,8 +176,4 @@
 	<icon path="art/icon32.png" size='32'/>
 	<icon path="art/icon64.png" size='64'/>
 	<icon path="art/iconOG.png" />
-
-	<define name="PSYCH_VER" value="0.7.1" />
-
-	<dependency name="Metal.framework" if="ios" />
 </project>

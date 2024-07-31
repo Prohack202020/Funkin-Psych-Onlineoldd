@@ -1,11 +1,5 @@
 package online.states;
 
-import flixel.util.FlxAxes;
-import flixel.addons.display.FlxPieDial;
-import sys.FileSystem;
-import states.stages.Philly;
-import flixel.FlxSubState;
-import flixel.group.FlxGroup;
 import flixel.math.FlxPoint;
 import flixel.FlxObject;
 import flixel.util.FlxSpriteUtil;
@@ -37,8 +31,6 @@ class Room extends MusicBeatState {
 
 	var p1:Character;
 	var p2:Character;
-	var p1Layer:FlxTypedGroup<Character> = new FlxTypedGroup<Character>();
-	var p2Layer:FlxTypedGroup<Character> = new FlxTypedGroup<Character>();
 
 	var curSelected:Int = -1;
 	var items:FlxTypedGroup<FlxSprite>;
@@ -50,123 +42,12 @@ class Room extends MusicBeatState {
 	var itemTip:FlxText;
 	var itemTipBg:FlxSprite;
 
-	var stage:Philly;
-
-	var cum:FlxCamera = new FlxCamera();
-	var camHUD:FlxCamera = new FlxCamera();
-	var groupHUD:FlxGroup;
-
-	var leavePie:LeavePie;
-
-	var revealTimer:FlxTimer;
-	var playerHold(default, set):Bool = false;
-	var oppHold:Bool = false;
-
-	static var instance:Room = null;
-
-	function set_playerHold(v) {
-		if (playerHold != v) {
-			playerHold = v;
-			GameClient.send("noteHold", v);
-		}
-		return v;
-	}
-
+	var phillyWindow:BGSprite;
+	var phillyLightsColors = [0xFF31A2FD, 0xFF31FD8C, 0xFFFB33F5, 0xFFFD4531, 0xFFFBA633];
+	var curLight:Int = -1;
+	
 	public function new() {
 		super();
-
-		instance = this;
-
-		GameClient.room.onMessage("checkChart", function(message) {
-			Waiter.put(() -> {
-				verifyDownloadMod(true);
-			});
-		});
-
-		playMusic((GameClient.isOwner ? GameClient.room.state.player1 : GameClient.room.state.player2).hasSong);
-		(GameClient.isOwner ? GameClient.room.state.player1 : GameClient.room.state.player2).listen("hasSong", (value:Bool, prev) -> {
-			Waiter.put(() -> {
-				playMusic(value);
-			});
-		});
-
-		GameClient.room.state.player1.listen("skinName", (value, prev) -> {
-			if (value == prev) return;
-			Waiter.put(() -> {
-				loadCharacter(true);
-			});
-		});
-		GameClient.room.state.player2.listen("skinName", (value, prev) -> {
-			if (value == prev) return;
-			Waiter.put(() -> {
-				loadCharacter(false);
-			});
-		});
-
-		GameClient.room.state.player1.listen("isReady", (value, prev) -> {
-			Waiter.put(() -> {
-				if (value) {
-					var sond = FlxG.sound.play(Paths.sound('scrollMenu'), 0.5);
-					sond.pitch = 1.1;
-				}
-				// else {
-				// 	var sond = FlxG.sound.play(Paths.sound('cancelMenu'));
-				// 	sond.pitch = 1.1;
-				// }
-			});
-		});
-		GameClient.room.state.player2.listen("isReady", (value, prev) -> {
-			Waiter.put(() -> {
-				if (value) {
-					var sond = FlxG.sound.play(Paths.sound('scrollMenu'), 0.5);
-					sond.pitch = 1.1;
-				}
-				// else {
-				// 	var sond = FlxG.sound.play(Paths.sound('cancelMenu'));
-				// 	sond.pitch = 1.1;
-				// }
-			});
-		});
-
-		// GameClient.room.onMessage("ping", function(message) {
-		// 	Waiter.put(() -> {
-		// 		GameClient.send("pong");
-		// 		@:privateAccess {
-		// 			if (stage?.phillyWindow == null) return;
-		// 			stage.curLight = FlxG.random.int(0, stage.phillyLightsColors.length - 1, [stage.curLight]);
-		// 			stage.phillyWindow.color = stage.phillyLightsColors[stage.curLight];
-		// 		}
-		// 	});
-		// });
-
-		GameClient.room.onMessage("charPlay", function(message:Array<Dynamic>) {
-			Waiter.put(() -> {
-				if (message == null || message[0] == null)
-					return;
-
-				playerAnim(message[0], true);
-			});
-		});
-
-		GameClient.room.onMessage("noteHold", function(?message:Bool) {
-			Waiter.put(() -> {
-				if (message == null) {
-					return;
-				}
-				oppHold = message;
-			});
-		});
-	}
-
-	var waitingForPlayer1Skin = false;
-	var waitingForPlayer2Skin = false;
-
-	override function create() {
-		super.create();
-
-		#if DISCORD_ALLOWED
-		DiscordClient.changePresence("In the Lobby", null, null, false);
-		#end
 
 		WeekData.reloadWeekFiles(false);
 		for (i in 0...WeekData.weeksList.length) {
@@ -175,95 +56,74 @@ class Room extends MusicBeatState {
 		Mods.loadTopMod();
 		WeekData.setDirectoryFromWeek();
 
-		FlxG.cameras.reset(cum);
-		FlxG.cameras.add(camHUD, false);
-		FlxG.cameras.setDefaultDrawTarget(cum, true);
-		camHUD.bgColor.alpha = 0;
-
-		groupHUD = new FlxGroup();
-		groupHUD.cameras = [camHUD];
-
 		// STAGE
 		Paths.setCurrentLevel("week3");
 
-		stage = new Philly();
-		stage.cameras = [cum];
-		@:privateAccess {
-			stage.phillyTrain.sound.volume = 0;
+		var stageOffset = [-150, -200];
 
-			if (!ClientPrefs.data.lowQuality) {
-				stage.bg.setGraphicSize(Std.int(stage.bg.width * 1));
-				stage.bg.updateHitbox();
-
-				stage.bg.x -= 80;
-				stage.bg.y -= 50;
-			}
-			stage.city.setGraphicSize(Std.int(stage.city.width * 1.1));
-			stage.city.updateHitbox();
-			stage.phillyWindow.setGraphicSize(Std.int(stage.phillyWindow.width * 1.1));
-			stage.phillyWindow.updateHitbox();
-
-			stage.city.x -= 80;
-			stage.phillyWindow.x -= 80;
-			stage.city.y -= 20;
-			stage.phillyWindow.y -= 20;
+		if (!ClientPrefs.data.lowQuality) {
+			var bg:BGSprite = new BGSprite('philly/sky', -175, -30, 0.1, 0.1);
+			add(bg);
 		}
-		add(stage);
 
-		cum.scroll.set(100, 130);
-		cum.zoom = 0.9;
+		var city:BGSprite = new BGSprite('philly/city', -65, -30, 0.3, 0.3);
+		city.setGraphicSize(Std.int(city.width * 0.85));
+		city.updateHitbox();
+		add(city);
 
-		add(p1Layer);
-		add(p2Layer);
+		phillyWindow = new BGSprite('philly/window', city.x, city.y, 0.3, 0.3);
+		phillyWindow.setGraphicSize(Std.int(phillyWindow.width * 0.85));
+		phillyWindow.updateHitbox();
+		add(phillyWindow);
+		phillyWindow.color = 0xFF31A2FD;
 
-		loadCharacter(true);
-		loadCharacter(false);
+		if (!ClientPrefs.data.lowQuality) {
+			var streetBehind:BGSprite = new BGSprite('philly/behindTrain', -40 + stageOffset[0], 50 + stageOffset[1]);
+			streetBehind.setGraphicSize(Std.int(streetBehind.width * 0.8));
+			add(streetBehind);
+		}
 
+		// var phillyTrain = new PhillyTrain(2000, 360);
+		// add(phillyTrain);
+
+		var phillyStreet = new BGSprite('philly/street', -40 + stageOffset[0], 90 + stageOffset[1]);
+		phillyStreet.setGraphicSize(Std.int(phillyStreet.width * 0.82));
+		add(phillyStreet);
+
+		p1 = new Character(100, 400, "bf");
+		p1.scale.set(0.7, 0.7);
+		p1.updateHitbox();
+		add(p1);
+
+		p2 = new Character(550, 400, "bf", true);
+		p2.scale.set(0.7, 0.7);
+		p2.updateHitbox();
+		add(p2);
 		// POST STAGE
 
-		player1Text = new FlxText(0, 100, 0, "PLAYER 1");
+		player1Text = new FlxText(0, 80, 0, "PLAYER 1");
 		player1Text.setFormat("VCR OSD Mono", 25, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 
 		player1Bg = new FlxSprite(-1000);
 		player1Bg.makeGraphic(1, 1, 0xA4000000);
 		player1Bg.updateHitbox();
-		player1Bg.y = player1Text.y - 30;
-		groupHUD.add(player1Bg);
-		groupHUD.add(player1Text);
+		player1Bg.y = player1Text.y;
+		add(player1Bg);
+		add(player1Text);
 
-		player2Text = new FlxText(0, 100, 0, "PLAYER 2");
+		player2Text = new FlxText(0, 80, 0, "PLAYER 2");
 		player2Text.setFormat("VCR OSD Mono", 25, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 
 		player2Bg = new FlxSprite(-1000);
 		player2Bg.makeGraphic(1, 1, 0xA4000000);
 		player2Bg.updateHitbox();
-		player2Bg.y = player2Text.y - 30;
-		groupHUD.add(player2Bg);
-		groupHUD.add(player2Text);
+		player2Bg.y = player2Text.y;
+		add(player2Bg);
+		add(player2Text);
 
-		chatBox = new ChatBox(camHUD, (cmd, args) -> {
-			switch (cmd) {
-				case "help":
-					ChatBox.addMessage("> Room Commands: /pa, /results");
-					return true;
-				case "pa":
-					if (args[0] != null && args[0].trim() != "")
-						playerAnim(args[0]);
-					else {
-						var anims = "";
-						for (anim in @:privateAccess getPlayer().animation._animations)
-							anims += '"${anim.name}" ';
-						ChatBox.addMessage("Please enter the animation you want to play!\nAvailable animations: " + anims);
-					}
-					return true;
-				case "results":
-					FlxG.switchState(() -> new ResultsScreen());
-					return true;
-				default:
-					return false;
-			}
-		});
-		groupHUD.add(chatBox);
+		chatBox = new ChatBox();
+		chatBox.y = FlxG.height - chatBox.height;
+		add(chatBox);
 
 		items = new FlxTypedGroup<FlxSprite>();
 
@@ -272,7 +132,7 @@ class Room extends MusicBeatState {
 		settingsIconBg.updateHitbox();
 		settingsIconBg.y = FlxG.height - settingsIconBg.height - 20;
 		settingsIconBg.x = FlxG.width - settingsIconBg.width - 20;
-		groupHUD.add(settingsIconBg);
+		add(settingsIconBg);
 
 		settingsIcon = new FlxSprite(settingsIconBg.x, settingsIconBg.y);
 		settingsIcon.antialiasing = ClientPrefs.data.antialiasing;
@@ -290,7 +150,7 @@ class Room extends MusicBeatState {
 		chatIconBg.updateHitbox();
 		chatIconBg.y = settingsIconBg.y;
 		chatIconBg.x = settingsIconBg.x - chatIconBg.width - 20;
-		groupHUD.add(chatIconBg);
+		add(chatIconBg);
 
 		chatIcon = new FlxSprite(chatIconBg.x, chatIconBg.y);
 		chatIcon.antialiasing = ClientPrefs.data.antialiasing;
@@ -308,7 +168,7 @@ class Room extends MusicBeatState {
 		playIconBg.updateHitbox();
 		playIconBg.y = chatIconBg.y;
 		playIconBg.x = chatIconBg.x - playIconBg.width - 20;
-		groupHUD.add(playIconBg);
+		add(playIconBg);
 
 		playIcon = new FlxSprite(playIconBg.x, playIconBg.y);
 		playIcon.antialiasing = ClientPrefs.data.antialiasing;
@@ -320,7 +180,7 @@ class Room extends MusicBeatState {
 		playIcon.y += playIconBg.height / 2 - playIcon.height / 2;
 		playIcon.ID = 2;
 		items.add(playIcon);
-
+		
 		roomCode = new FlxText(0, 0, 0, "Room Code: ????");
 		roomCode.setFormat("VCR OSD Mono", 18, FlxColor.WHITE, RIGHT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		roomCode.x = settingsIconBg.x + settingsIconBg.width - roomCode.width;
@@ -334,7 +194,7 @@ class Room extends MusicBeatState {
 		roomCodeBg.x = roomCode.x;
 		roomCodeBg.scale.set(roomCode.width, roomCode.height);
 		roomCodeBg.updateHitbox();
-		groupHUD.add(roomCodeBg);
+		add(roomCodeBg);
 		items.add(roomCode);
 
 		songName = new FlxText(0, 0, 0, "Selected Song: ????");
@@ -350,7 +210,7 @@ class Room extends MusicBeatState {
 		songNameBg.x = songName.x;
 		songNameBg.scale.set(songName.width, songName.height);
 		songNameBg.updateHitbox();
-		groupHUD.add(songNameBg);
+		add(songNameBg);
 		items.add(songName);
 
 		verifyMod = new FlxText(0, 0, 0, "...");
@@ -366,157 +226,118 @@ class Room extends MusicBeatState {
 		verifyModBg.x = verifyMod.x;
 		verifyModBg.scale.set(verifyMod.width, verifyMod.height);
 		verifyModBg.updateHitbox();
-		groupHUD.add(verifyModBg);
+		add(verifyModBg);
 		items.add(verifyMod);
 
-		groupHUD.add(items);
+		add(items);
 
 		itemTipBg = new FlxSprite(-1000);
 		itemTipBg.makeGraphic(1, 1, 0xA4000000);
 		itemTipBg.updateHitbox();
-		groupHUD.add(itemTipBg);
+		add(itemTipBg);
 
 		itemTip = new FlxText(0, 0, 0, "Placeholder");
 		itemTip.setFormat("VCR OSD Mono", 18, FlxColor.WHITE, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
-		groupHUD.add(itemTip);
+		add(itemTip);
 
-		groupHUD.add(leavePie = new LeavePie());
+		GameClient.room.onMessage("gameStarted", function(message) {
+			Waiter.put(() -> {
+				FlxG.mouse.visible = false;
+				
+				Mods.currentModDirectory = GameClient.room.state.modDir;
+				trace("WOWO : " + GameClient.room.state.song + " | " + GameClient.room.state.folder);
+				PlayState.SONG = Song.loadFromJson(GameClient.room.state.song, GameClient.room.state.folder);
+				PlayState.isStoryMode = false;
+				PlayState.storyDifficulty = GameClient.room.state.diff;
+				GameClient.clearOnMessage();
+				LoadingState.loadAndSwitchState(new PlayState());
 
-		add(groupHUD);
-		
+				FlxG.sound.music.volume = 0;
+
+				#if MODS_ALLOWED
+				DiscordClient.loadModRPC();
+				#end
+			});
+		});
+
+		GameClient.room.onMessage("checkChart", function(message) {
+			Waiter.put(() -> {
+				try {
+					if (GameClient.room.state.song == "")
+						return;
+
+					if (Mods.getModDirectories().contains(GameClient.room.state.modDir) || GameClient.room.state.modDir == "") {
+						Mods.currentModDirectory = GameClient.room.state.modDir;
+						try {
+							GameClient.send("verifyChart", Md5.encode(Song.loadRawSong(GameClient.room.state.song, GameClient.room.state.folder)));
+						}
+						catch (exc) {}
+						return;
+					}
+
+					if (GameClient.room.state.modDir != null && GameClient.room.state.modURL != null && GameClient.room.state.modURL != "") {
+						OnlineMods.downloadMod(GameClient.room.state.modURL);
+					}
+				}
+				catch (exc) {
+					Sys.println(exc);
+				}
+			});
+		});
+
+		GameClient.room.state.listen("isPrivate", (value, prev) -> {
+			if (value) {
+				DiscordClient.changePresence("In a online room.", "Private room.", null, false);
+			}
+			else {
+				DiscordClient.changePresence("In a online room.", "Public room: " + GameClient.room.roomId, null, false);
+			}
+		});
+
+		playMusic((GameClient.isOwner ? GameClient.room.state.player1 : GameClient.room.state.player2).hasSong);
+		(GameClient.isOwner ? GameClient.room.state.player1 : GameClient.room.state.player2).listen("hasSong", (value:Bool, prev) -> {
+			playMusic(value);
+		});
+
+		GameClient.room.onMessage("ping", function(message) {
+			Waiter.put(() -> {
+				GameClient.send("pong");
+				curLight = FlxG.random.int(0, phillyLightsColors.length - 1, [curLight]);
+				phillyWindow.color = phillyLightsColors[curLight];
+			});
+		});
+
+		GameClient.room.onMessage("charPlay", function(message:Array<Dynamic>) {
+			Waiter.put(() -> {
+				if (message == null || message[0] == null)
+					return;
+
+				playerAnim(message[0], true);
+			});
+		});
+
 		updateTexts();
+	}
+
+	override function create() {
+		super.create();
 
 		FlxG.mouse.visible = true;
-		FlxG.autoPause = false;
-
-		verifyDownloadMod(true);
-
-		GameClient.send("status", "In the Lobby");
 	}
 
-	function loadCharacter(isP1:Bool, ?enableDownload:Bool = true) {
-		var oldModDir = Mods.currentModDirectory;
-
-		if (isP1) {
-			if (p1Layer == null || p1Layer.members == null) //what
-				return;
-			if (p1 != null)
-				p1.destroy();
-			p1 = null;
-			p1Layer.clear();
-
-			if (FileSystem.exists(Paths.mods(GameClient.room.state.player1.skinMod))) {
-				if (GameClient.room.state.player1.skinMod != null)
-					Mods.currentModDirectory = GameClient.room.state.player1.skinMod;
-
-				if (GameClient.room.state.player1.skinName != null)
-					p1 = new Character(0, 0, GameClient.room.state.player1.skinName);
-			}
-			else if (enableDownload && GameClient.room.state.player1.skinURL != null) {
-				waitingForPlayer1Skin = true;
-				OnlineMods.downloadMod(GameClient.room.state.player1.skinURL, (_) -> {
-					if (destroyed)
-						return;
-
-					loadCharacter(isP1, false);
-					waitingForPlayer1Skin = false;
-				});
-			}
-
-			if (p1 == null)
-				p1 = new Character(0, 0, "default");
-			p1.x = 100 + p1.positionArray[0];
-			p1.y = 120 + p1.positionArray[1];
-
-			p1Layer.add(p1);
-		}
-		else 
-		{
-			if (p2Layer == null || p2Layer.members == null)
-				return;
-			if (p2 != null)
-				p2.destroy();
-			p2 = null;
-			p2Layer.clear();
-
-			if (FileSystem.exists(Paths.mods(GameClient.room.state.player2.skinMod))) {
-				if (GameClient.room.state.player2.skinMod != null)
-					Mods.currentModDirectory = GameClient.room.state.player2.skinMod;
-
-				if (GameClient.room.state.player2.skinName != null)
-					p2 = new Character(0, 0, GameClient.room.state.player2.skinName + "-player", true);
-			}
-			else if (enableDownload && GameClient.room.state.player2.skinURL != null) {
-				waitingForPlayer2Skin = true;
-				OnlineMods.downloadMod(GameClient.room.state.player2.skinURL, (_) -> {
-					if (destroyed)
-						return;
-
-					loadCharacter(isP1, false);
-					waitingForPlayer2Skin = false;
-				});
-			}
-
-			if (p2 == null)
-				p2 = new Character(/*770*/ 0, 0, "default-player", true);
-			p2.x = 600 + p2.positionArray[0];
-			p2.y = 120 + p2.positionArray[1];
-
-			p2Layer.add(p2);
-		}
-		
-		Mods.currentModDirectory = oldModDir;
-	}
-
-	override function openSubState(obj:FlxSubState) {
-		obj.cameras = [camHUD];
-		super.openSubState(obj);
-	}
-
-	override function closeSubState() {
-		super.closeSubState();
-
-		GameClient.send("status", "In the Lobby");
-	}
-
-	var optionShake:FlxTween;
-
-	var elapsedShit = 3.;
+	var elapsedShit = 0.;
     override function update(elapsed:Float) {
-		if (!GameClient.isConnected()) {
-			return;
-		}
-		
-		// if (FlxG.keys.justPressed.SPACE) {
-		// 	Alert.alert("Camera Location:", '${cum.scroll.x},${cum.scroll.y} x ${cum.zoom}');
-		// }
-		// if (FlxG.keys.pressed.U) {
-		// 	cum.zoom -= elapsed * 0.5;
-		// }
-		// if (FlxG.keys.pressed.O) {
-		// 	cum.zoom += elapsed * 0.5;
-		// }
-		// if (FlxG.keys.pressed.I) {
-		// 	cum.scroll.y -= elapsed * 20;
-		// }
-		// if (FlxG.keys.pressed.J) {
-		// 	cum.scroll.x -= elapsed * 20;
-		// }
-		// if (FlxG.keys.pressed.K) {
-		// 	cum.scroll.y += elapsed * 20;
-		// }
-		// if (FlxG.keys.pressed.L) {
-		// 	cum.scroll.x += elapsed * 20;
-		// }
-
-		#if DISCORD_ALLOWED
 		elapsedShit += elapsed;
 
 		if (elapsedShit >= 3) {
 			elapsedShit = 0;
-			DiscordClient.updateOnlinePresence();
+			if (GameClient.room.state.isPrivate) {
+				DiscordClient.changePresence("In a online room.", "Private room.", null, false);
+			}
+			else {
+				DiscordClient.changePresence("In a online room.", "Public room: " + GameClient.room.roomId, null, false);
+			}
 		}
-		#end
 
 		for (item in items) {
 			if (curSelected == item.ID) {
@@ -525,42 +346,35 @@ class Room extends MusicBeatState {
 				else if (item == chatIcon)
 					item.angle = FlxMath.lerp(item.angle, 20, elapsed * 5);
 
-				if (item == playIcon) {
-					if (getSelfPlayer().hasSong) {
-						item.scale.set(FlxMath.lerp(item.scale.x, 1.2, elapsed * 10), FlxMath.lerp(item.scale.y, 1.2, elapsed * 10));
-					}
-					else {
-						item.scale.set(FlxMath.lerp(item.scale.x, 1.05, elapsed * 10), FlxMath.lerp(item.scale.y, 1.05, elapsed * 10));
-					}
-				}
-				else
+				if (item != playIcon)
 					item.scale.set(FlxMath.lerp(item.scale.x, 1.1, elapsed * 10), FlxMath.lerp(item.scale.y, 1.1, elapsed * 10));
+				else
+					item.scale.set(FlxMath.lerp(item.scale.x, 1.2, elapsed * 10), FlxMath.lerp(item.scale.y, 1.2, elapsed * 10));
 			}
 			else {
 				item.angle = FlxMath.lerp(item.angle, 0, elapsed * 5);
 				item.scale.set(FlxMath.lerp(item.scale.x, 1, elapsed * 10), FlxMath.lerp(item.scale.y, 1, elapsed * 10));
 			}
 		}
-		playIcon.alpha = getSelfPlayer().hasSong ? 1.0 : 0.5;
 
 		if (!chatBox.focused) {
 			if (FlxG.mouse.justMoved) {
-				if (FlxG.mouse.overlaps(settingsIconBg, camHUD)) {
+				if (mouseInsideOf(settingsIconBg)) {
 					curSelected = settingsIcon.ID;
 				}
-				else if (FlxG.mouse.overlaps(chatIconBg, camHUD)) {
+				else if (mouseInsideOf(chatIconBg)) {
 					curSelected = chatIcon.ID;
 				}
-				else if (FlxG.mouse.overlaps(playIconBg, camHUD)) {
+				else if (mouseInsideOf(playIconBg)) {
 					curSelected = playIcon.ID;
 				}
-				else if (FlxG.mouse.overlaps(roomCodeBg, camHUD)) {
+				else if (mouseInsideOf(roomCodeBg)) {
 					curSelected = roomCode.ID;
 				}
-				else if (FlxG.mouse.overlaps(songNameBg, camHUD)) {
+				else if (mouseInsideOf(songNameBg)) {
 					curSelected = songName.ID;
 				}
-				else if (FlxG.mouse.overlaps(verifyModBg, camHUD)) {
+				else if (mouseInsideOf(verifyModBg)) {
 					curSelected = verifyMod.ID;
 				}
 				else {
@@ -568,52 +382,19 @@ class Room extends MusicBeatState {
 				}
 			}
 
-			if (controls.TAUNT)
-				playerAnim('taunt');
-
-			var held = false;
-			for (key in ['note_left', 'note_down', 'note_up', 'note_right']) {
-				if (controls.pressed(key)) {
-					held = true;
-					break;
-				}
+			if (controls.UI_LEFT_P) {
+				changeSelection(1);
 			}
-			playerHold = held;
-
-			// trace('playerHold = ' + playerHold + ', oppHold = ' + oppHold);
-
-			if (FlxG.keys.pressed.ALT) { // useless, but why not?
-				var suffix = FlxG.keys.pressed.CONTROL ? 'miss' : '';
-				if (controls.NOTE_LEFT_P) {
-					playerAnim('singLEFT' + suffix);
-				}
-				if (controls.NOTE_RIGHT_P) {
-					playerAnim('singRIGHT' + suffix);
-				}
-				if (controls.NOTE_UP_P) {
-					playerAnim('singUP' + suffix);
-				}
-				if (controls.NOTE_DOWN_P) {
-					playerAnim('singDOWN' + suffix);
-				}
-			} else {
-				if (controls.UI_LEFT_P) {
-					changeSelection(1);
-				}
-				if (controls.UI_RIGHT_P) {
-					changeSelection(-1);
-				}
-				if (controls.UI_UP_P) {
-					changeSelection(1);
-				}
-				if (controls.UI_DOWN_P) {
-					changeSelection(-1);
-				}
+			if (controls.UI_RIGHT_P) {
+				changeSelection(-1);
 			}
-			
-			danceLogic(p1);
-			danceLogic(p2);
-			
+			if (controls.UI_UP_P) {
+				changeSelection(1);
+			}
+			if (controls.UI_DOWN_P) {
+				changeSelection(-1);
+			}
+
 			if (controls.ACCEPT || FlxG.mouse.justPressed) {
 				switch (curSelected) {
 					case 0:
@@ -621,7 +402,11 @@ class Room extends MusicBeatState {
 					case 1:
 						chatBox.focused = true;
 					case 2:
-						var selfPlayer:Player = getSelfPlayer();
+						var selfPlayer:Player;
+						if (GameClient.isOwner)
+							selfPlayer = GameClient.room.state.player1;
+						else
+							selfPlayer = GameClient.room.state.player2;
 
 						if (!selfPlayer.hasSong && GameClient.room.state.song != "" && (Mods.getModDirectories().contains(GameClient.room.state.modDir) || GameClient.room.state.modDir == "")) {
 							Mods.currentModDirectory = GameClient.room.state.modDir;
@@ -629,74 +414,60 @@ class Room extends MusicBeatState {
 								GameClient.send("verifyChart", Md5.encode(Song.loadRawSong(GameClient.room.state.song, GameClient.room.state.folder)));
 							}
 							catch (exc) {
-								Alert.alert("Caught an exception!", exc.toString());
-								if (optionShake != null)
-									optionShake.cancel();
-								optionShake = FlxTween.shake(playIcon, 0.05, 0.3, FlxAxes.X);
 							}
-						}
-						else if (selfPlayer.hasSong) {
-							GameClient.send("startGame");
 						}
 						else {
-							if (GameClient.room.state.song == "") {
-								Alert.alert("Song isn't selected!");
-							}
-							else {
-								Alert.alert("You don't have the current song/mod!");
-							}
-							var sond = FlxG.sound.play(Paths.sound('badnoise' + FlxG.random.int(1, 3)));
-							sond.pitch = 1.1;
-							if (optionShake != null)
-								optionShake.cancel();
-							optionShake = FlxTween.shake(playIcon, 0.05, 0.3, FlxAxes.X);
+							GameClient.send("startGame");
 						}
 					case 3:
-						roomCode.text = 'Room Code: "' + GameClient.getRoomSecret() + '"';
+						roomCode.text = "Room Code: " + GameClient.room.roomId;
 						roomCode.x = settingsIconBg.x + settingsIconBg.width - roomCode.width;
 						roomCodeBg.scale.set(roomCode.width, roomCode.height);
 						roomCodeBg.updateHitbox();
 						roomCodeBg.x = roomCode.x;
-						if (revealTimer != null)
-							revealTimer.cancel();
-						revealTimer = new FlxTimer().start(10, (t) -> {
-							roomCode.text = "Room Code: ????";
-							roomCode.x = settingsIconBg.x + settingsIconBg.width - roomCode.width;
-							roomCodeBg.scale.set(roomCode.width, roomCode.height);
-							roomCodeBg.updateHitbox();
-							roomCodeBg.x = roomCode.x;
-						});
-						Clipboard.text = GameClient.getRoomSecret(true);
-						Alert.alert("Room code copied!");
 					case 4:
 						if (GameClient.hasPerms()) {
 							GameClient.clearOnMessage();
-							FlxG.switchState(() -> new FreeplayState());
+							MusicBeatState.switchState(new FreeplayState());
 							FlxG.mouse.visible = false;
 						}
-						else {
-							Alert.alert("Only the host can do that!");
-							var sond = FlxG.sound.play(Paths.sound('badnoise' + FlxG.random.int(1, 3)));
-							sond.pitch = 1.1;
-							if (optionShake != null)
-								optionShake.cancel();
-							optionShake = FlxTween.shake(songName, 0.05, 0.3, FlxAxes.X);
-						}
 					case 5:
-						if (verifyDownloadMod()) {
-							GameClient.clearOnMessage();
-							FlxG.switchState(() -> new BananaDownload());
+						var selfPlayer:Player;
+						if (GameClient.isOwner)
+							selfPlayer = GameClient.room.state.player1;
+						else
+							selfPlayer = GameClient.room.state.player2;
+
+						if (GameClient.room.state.song == "")
+							return;
+
+						if (Mods.getModDirectories().contains(GameClient.room.state.modDir) || GameClient.room.state.modDir == "") {
+							Mods.currentModDirectory = GameClient.room.state.modDir;
+							try {
+								GameClient.send("verifyChart", Md5.encode(Song.loadRawSong(GameClient.room.state.song, GameClient.room.state.folder)));
+							}
+							catch (exc) {}
+							return;
+						}
+
+						if (!selfPlayer.hasSong && GameClient.room.state.modDir != null && GameClient.room.state.modURL != null && GameClient.room.state.modURL != "") {
+							OnlineMods.downloadMod(GameClient.room.state.modURL);
 						}
 				}
 			}
-			else if (FlxG.mouse.justPressedRight) {
-				if (curSelected == 5)
-					FlxG.switchState(() -> new BananaDownload());
+
+			if (FlxG.keys.justPressed.ENTER) {
+				if (GameClient.hasPerms() && GameClient.room.state.player1.hasSong && GameClient.room.state.player2.hasSong) {
+					GameClient.send("startGame");
+				}
+			}
+
+			if (controls.BACK) {
+				GameClient.leaveRoom();
 			}
 
 			if (FlxG.keys.pressed.CONTROL && FlxG.keys.justPressed.C) {
-				Clipboard.text = GameClient.getRoomSecret(true);
-				Alert.alert("Room code copied!");
+				Clipboard.text = GameClient.room.roomId;
 			}
 
 			if (FlxG.keys.justPressed.SHIFT) {
@@ -711,92 +482,19 @@ class Room extends MusicBeatState {
 		if (FlxG.sound.music != null)
 			Conductor.songPosition = FlxG.sound.music.time;
     }
-	
-	function verifyDownloadMod(?ignoreAlert:Bool = false) {
-		try {
-			if (GameClient.room.state.song == "") {
-				if (ignoreAlert)
-					return false;
-
-				if (GameClient.hasPerms())
-					return true;
-
-				Alert.alert("Song isn't selected!");
-				var sond = FlxG.sound.play(Paths.sound('badnoise' + FlxG.random.int(1, 3)));
-				sond.pitch = 1.1;
-				if (optionShake != null)
-					optionShake.cancel();
-				optionShake = FlxTween.shake(verifyMod, 0.05, 0.3, FlxAxes.X);
-				return false;
-			}
-			if (getSelfPlayer().hasSong) {
-				if (ignoreAlert)
-					return false;
-
-				if (GameClient.hasPerms())
-					return true;
-
-				Alert.alert("You already have this song installed!");
-				var sond = FlxG.sound.play(Paths.sound('badnoise' + FlxG.random.int(1, 3)));
-				sond.pitch = 1.1;
-				if (optionShake != null)
-					optionShake.cancel();
-				optionShake = FlxTween.shake(verifyMod, 0.05, 0.3, FlxAxes.X);
-				return false;
-			}
-
-			if (Mods.getModDirectories().contains(GameClient.room.state.modDir) || GameClient.room.state.modDir == "") {
-				Mods.currentModDirectory = GameClient.room.state.modDir;
-				try {
-					GameClient.send("verifyChart", Md5.encode(Song.loadRawSong(GameClient.room.state.song, GameClient.room.state.folder)));
-				}
-				catch (exc) {
-				}
-				return false;
-			}
-
-			if (GameClient.room.state.modDir != null && GameClient.room.state.modURL != null && GameClient.room.state.modURL != "") {
-				OnlineMods.downloadMod(GameClient.room.state.modURL, (mod) -> {
-					if (destroyed)
-						return;
-
-					if (GameClient.isConnected() && GameClient.room.state.modDir == mod) {
-						if (Mods.getModDirectories().contains(GameClient.room.state.modDir)) {
-							Mods.currentModDirectory = GameClient.room.state.modDir;
-							GameClient.send("verifyChart", Md5.encode(Song.loadRawSong(GameClient.room.state.song, GameClient.room.state.folder)));
-						}
-					}
-				});
-			}
-			else if (!ignoreAlert) {
-				if (GameClient.room.state.modURL == null || GameClient.room.state.modURL == "") {
-					Alert.alert("Mod couldn't be found!", "Host didn't specify the URL of this mod");
-				}
-				else if (Mods.getModDirectories().contains(GameClient.room.state.modDir)) {
-					Alert.alert("Mod couldn't be found!", "Expected mod data to exist in this path: " + (GameClient.room.state.modDir ?? "mods/"));
-				}
-				var sond = FlxG.sound.play(Paths.sound('badnoise' + FlxG.random.int(1, 3)));
-				sond.pitch = 1.1;
-				if (optionShake != null)
-					optionShake.cancel();
-				optionShake = FlxTween.shake(verifyMod, 0.05, 0.3, FlxAxes.X);
-			}
-		}
-		catch (exc) {
-			Sys.println(exc);
-		}
-
-		return false;
-	}
 
     function updateTexts() {
 		if (GameClient.room == null)
 			return;
 
-		player1Text.x = 250 - player1Text.width / 2;
-		player2Text.x = 700 - player2Text.width / 2;
+		player1Text.x = p1.x + p1.width / 2 - player1Text.width / 2;
+		player2Text.x = p2.x + p2.width / 2 - player2Text.width / 2;
 
-		var selfPlayer:Player = getSelfPlayer();
+		var selfPlayer:Player;
+		if (GameClient.isOwner)
+			selfPlayer = GameClient.room.state.player1;
+		else
+			selfPlayer = GameClient.room.state.player2;
 
 		if (GameClient.room.state.modDir == "" || GameClient.room.state.song == "") {
 			verifyMod.text = "No chosen mod.";
@@ -806,7 +504,7 @@ class Room extends MusicBeatState {
 		}
 		else {
 			if (GameClient.room.state.modURL == null || GameClient.room.state.modURL == "")
-				verifyMod.text = "No mod named: " + GameClient.room.state.modDir + " (Unknown; Host didn't specify mod's URL)";
+				verifyMod.text = "No mod named: " + GameClient.room.state.modDir + " (Unknown; Couldn't find mod's URL)";
 			else 
 				verifyMod.text = "No mod named: " + GameClient.room.state.modDir + " (Download/Verify it here!)";
 		}
@@ -817,64 +515,83 @@ class Room extends MusicBeatState {
 		verifyModBg.x = verifyMod.x;
 
 		songName.text = "Selected Song: " + GameClient.room.state.song;
-		if (GameClient.room.state.song == null || GameClient.room.state.song.trim() == "")
-			songName.text += "(None)";
-		else if (!selfPlayer.hasSong)
+		if (!selfPlayer.hasSong)
 			songName.text += " (Not found!)";
 		songName.x = roomCodeBg.x + roomCodeBg.width - songName.width;
 		songNameBg.scale.set(songName.width, songName.height);
 		songNameBg.updateHitbox();
 		songNameBg.x = songName.x;
 
-		player1Text.text = returnPlayerText(GameClient.room.state.player1);
+		// if (!GameClient.hasPerms()) {
+		// 	roomVisibleTip.text = "(You can't change that)";
+		// 	startGameTip.text = "(Only the OP can do that)";
+		// }
+		// else {
+		// 	roomVisibleTip.text = "(This can be changed in the settings (SHIFT))";
+		// 	startGameTip.text = "(Press: ENTER to Start Game; SPACE to select song)";
+		// }
+
+		// startGame.text = "Song: " + GameClient.room.state.song;
+		// roomVisible.text = GameClient.room.state.isPrivate ? "CODE ONLY" : "PUBLIC";
+		// if (GameClient.room.state.player1.hasSong && GameClient.room.state.player2.hasSong) {
+		// 	startGame.alpha = 1;
+		// 	startGame.text += " - Ready to start!";
+		// }
+		// else {
+		// 	startGame.alpha = 0.5;
+		// 	if (GameClient.room.state.song != "" && GameClient.room.state.player2.name != "") {
+		// 		startGame.text += " - " + GameClient.room.state.player2.name + " doesn't have mod: " + GameClient.room.state.modDir;
+		// 	}
+		// }
+
+        player1Text.text = "PLAYER 1\n" +
+            GameClient.room.state.player1.name + "\n\n" +
+            "Last Song Summary\n" +
+            "Score: " + GameClient.room.state.player1.score + "\n" +
+			"Accuracy: " + GameClient.getPlayerAccuracyPercent(GameClient.room.state.player1) + "%\n" +
+            "Sicks: " + GameClient.room.state.player1.sicks + "\n" + 
+            "Goods: " + GameClient.room.state.player1.goods + "\n" +
+            "Bads: " + GameClient.room.state.player1.bads + "\n" + 
+            "Shits: " + GameClient.room.state.player1.shits + "\n" +
+			"Misses: " + GameClient.room.state.player1.misses + "\n" + 
+			"Ping: " + GameClient.room.state.player1.ping + "ms";
+		if (GameClient.room.state.player1.isReady)
+			player1Text.text += "\nREADY";
+		else
+			player1Text.text += "\nNOT READY";
 
 		if (GameClient.room.state.player2 != null && GameClient.room.state.player2.name != "") {
 			player2Text.alpha = 1;
-			p2.colorTransform.redOffset = 0;
-			p2.colorTransform.greenOffset = 0;
-			p2.colorTransform.blueOffset = 0;
 			p2.alpha = 1;
-			player2Text.text = returnPlayerText(GameClient.room.state.player2);
+            player2Text.text = "PLAYER 2\n" +
+                GameClient.room.state.player2.name + "\n\n" +
+                "Last Song Summary\n" +
+                "Score: " + GameClient.room.state.player2.score + "\n" +
+				"Accuracy: " + GameClient.getPlayerAccuracyPercent(GameClient.room.state.player2) + "%\n" +
+                "Sicks: " + GameClient.room.state.player2.sicks + "\n" + 
+                "Goods: " + GameClient.room.state.player2.goods + "\n" +
+                "Bads: " + GameClient.room.state.player2.bads + "\n" + 
+                "Shits: " + GameClient.room.state.player2.shits + "\n" + 
+				"Misses: " + GameClient.room.state.player2.misses + "\n" +
+				"Ping: " + GameClient.room.state.player2.ping + "ms";
+			if (GameClient.room.state.player2.isReady)
+				player2Text.text += "\nREADY";
+			else
+				player2Text.text += "\nNOT READY";
         }
         else {
-			player2Text.text = "WAITING FOR\nOPPONENT";
+			player2Text.text = "WAITING FOR OPPONENT...";
 			player2Text.alpha = 0.8;
-			p2.colorTransform.redOffset = -255;
-			p2.colorTransform.greenOffset = -255;
-			p2.colorTransform.blueOffset = -255;
-			p2.alpha = 0.5;
-			if (p2.curCharacter != "default-player")
-				loadCharacter(false);
+			p2.alpha = 0.4;
         }
 
-		if (waitingForPlayer1Skin) {
-			p1.colorTransform.redOffset = -255;
-			p1.colorTransform.greenOffset = -255;
-			p1.colorTransform.blueOffset = -255;
-			p1.alpha = 0.5;
-		}
-		else {
-			p1.colorTransform.redOffset = 0;
-			p1.colorTransform.greenOffset = 0;
-			p1.colorTransform.blueOffset = 0;
-			p1.alpha = 1;
-		}
-
-		if (waitingForPlayer2Skin) {
-			p2.colorTransform.redOffset = -255;
-			p2.colorTransform.greenOffset = -255;
-			p2.colorTransform.blueOffset = -255;
-			p2.alpha = 0.5;
-		}
-
-		player1Bg.scale.set(FlxMath.bound(player1Text.width, 300), player1Text.height + 60);
+		player1Bg.x = player1Text.x;
+		player1Bg.scale.set(player1Text.width, player1Text.height);
 		player1Bg.updateHitbox();
 
-		player2Bg.scale.set(FlxMath.bound(player2Text.width, 300), player2Text.height + 60);
+		player2Bg.x = player2Text.x;
+		player2Bg.scale.set(player2Text.width, player2Text.height);
 		player2Bg.updateHitbox();
-
-		player1Bg.x = 250 - player1Bg.width / 2;
-		player2Bg.x = 700 - player2Bg.width / 2;
 
 		switch (curSelected) {
 			case 0:
@@ -882,13 +599,13 @@ class Room extends MusicBeatState {
 			case 1:
 				itemTip.text = " - CHAT - \nOpens chat.\n\n(Keybind: TAB)";
 			case 2:
-				itemTip.text = " - START GAME/READY - \nToggles your READY status.\n\nPlayers also need to have the\ncurrently selected mod installed.\n\nTwo players are required to start.";
+				itemTip.text = " - START GAME/READY - \nToggles your READY status.\nPlayers need to have the currently\nselected mod installed.\nAll players should also be ready to start.";
 			case 3:
-				itemTip.text = " - ROOM CODE - \nUnique code of this room.\n\nACCEPT - Reveals the code and\ncopies it to your clipboard.\n\nCTRL + C - Copies the code without\nrevealing it on the screen.";
+				itemTip.text = " - ROOM CODE - \nUnique code of this room.\n\nACCEPT - Reveals the code.\nCTRL + C - Copies it without revealing.";
 			case 4:
 				itemTip.text = " - SELECT SONG - \nSelects the song.\n\n(Players with host permissions\ncan only do that)";
 			case 5:
-				itemTip.text = " - MOD - \nDownloads the currently selected mod\nif it isn't installed.\n\nAfter you install it\npress this button again!\n\nRIGHT CLICK - Open Mod Downloader";
+				itemTip.text = " - VERIFY MOD - \nDownloads the currently selected mod\nif it isn't installed.\n\nAfter you install it\npress this button again!";
 			default:
 				itemTip.text = " - LOBBY - \nPress UI keybinds\nor use your mouse\nto select an option!";
 		}
@@ -900,18 +617,6 @@ class Room extends MusicBeatState {
 		itemTipBg.scale.set(itemTip.width, itemTip.height);
 		itemTipBg.updateHitbox();
     }
-
-	function returnPlayerText(player:Player) {
-		return 
-			player.name + "\n\n" +
-			//player.title + "\n\n" + //completely unsure about that
-            "Statistics\n" +
-            "Points: " + player.points + "\n" +
-            "Ping: " + player.ping + "ms" + "\n\n" +
-			player.status + "\n" +
-			(!player.isReady ? "NOT " : "") + "READY"
-		;
-	}
 
 	function changeSelection(diffe:Int) {
 		curSelected += diffe;
@@ -938,62 +643,34 @@ class Room extends MusicBeatState {
 		}
 	}
 
-	static public function getStaticPlayer(?isSelf:Bool = true) {
-		if (instance != null)
-			return instance.getPlayer(isSelf);
-		return null;
+	function mouseInsideOf(object:FlxObject) {
+		return 
+			FlxG.mouse.x >= object.x && FlxG.mouse.x <= object.x + object.width &&
+			FlxG.mouse.y >= object.y && FlxG.mouse.y <= object.y + object.height
+		;
 	}
 
-	public function getPlayer(?isSelf:Bool = true) {
-		if (GameClient.isOwner) {
-			return isSelf ? p1 : p2;
+	function playerAnim(anim:String, incoming:Bool) {
+		if (!GameClient.isOwner) {
+			(incoming ? p1 : p2).playAnim(anim, true);
 		}
 		else {
-			return isSelf ? p2 : p1;
+			(incoming ? p2 : p1).playAnim(anim, true);
 		}
-	}
-
-	function playerAnim(anim:String, ?incoming:Bool = false) {
-		getPlayer(!incoming)?.playAnim(anim, true);
-		if (anim.endsWith('miss'))
-			var sond = FlxG.sound.play(Paths.sound('missnote' + FlxG.random.int(1, 3)), 0.25);
 
 		if (!incoming)
 			GameClient.send("charPlay", [anim]);
 	}
 
-	function getSelfPlayer() {
-		if (GameClient.isOwner)
-			return GameClient.room.state.player1;
-		else
-			return GameClient.room.state.player2;
-	}
-
-	function danceLogic(char:Character, ?isBeat = false) {
-		if (char != null && char.animation.curAnim != null) {
-			if (isBeat) {
-				if (curBeat % char.danceEveryNumBeats == 0 &&
-					!char.animation.curAnim.name.startsWith('sing'))
-					char.dance();
-			} else {
-				if (!(char.animation.curAnim.name.endsWith('miss') || char.isMissing) &&
-					!(getPlayer() == char ? playerHold : oppHold) &&
-					char.holdTimer > Conductor.stepCrochet * (0.0011 / FlxG.sound.music.pitch) * char.singDuration
-					&& char.animation.curAnim.name.startsWith('sing') &&
-					!(char.animation.curAnim.name.endsWith('miss') || char.isMissing))
-					char.dance();
-			}
-		}
-	}
-
 	override function beatHit() {
 		super.beatHit();
 
-		#if (PSYCH_VER < "0.7")
-		stage.beatHit(curBeat);
-		#end
-
-		danceLogic(p1, true);
-		danceLogic(p2, true);
+		if (curBeat % p1.danceEveryNumBeats == 0)
+			p1.dance();
+		
+		if (curBeat % p2.danceEveryNumBeats == 0)
+			p2.dance();
 	}
+
+	
 }

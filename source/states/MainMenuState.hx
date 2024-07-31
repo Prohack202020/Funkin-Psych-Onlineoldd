@@ -1,6 +1,6 @@
 package states;
 
-import online.states.OnlineState;
+import online.states.Lobby;
 import backend.WeekData;
 import backend.Achievements;
 
@@ -17,7 +17,8 @@ import options.OptionsState;
 
 class MainMenuState extends MusicBeatState
 {
-	public static var psychEngineVersion:String = '0.7.1h'; // This is also used for Discord RPC
+	public static var psychOnlineVersion:String = "0.3.2";
+	public static var psychEngineVersion:String = '0.7.1h'; //This is also used for Discord RPC
 	public static var curSelected:Int = 0;
 
 	var menuItems:FlxTypedGroup<FlxSprite>;
@@ -41,9 +42,9 @@ class MainMenuState extends MusicBeatState
 	public function new() {
 		super();
 
-		// if (TitleState.offlineMode) {
-		// 	optionShit.remove('online');
-		// }
+		if (TitleState.offlineMode) {
+			optionShit.remove('online');
+		}
 	}
 
 	override function create()
@@ -53,7 +54,7 @@ class MainMenuState extends MusicBeatState
 		#end
 		Mods.loadTopMod();
 
-		#if DISCORD_ALLOWED
+		#if desktop
 		// Updating Discord Rich Presence
 		DiscordClient.changePresence("In the Menus", null);
 		#end
@@ -126,7 +127,7 @@ class MainMenuState extends MusicBeatState
 
 		FlxG.camera.follow(camFollow, null, 0.15);
 
-		var versionShit:FlxText = new FlxText(12, FlxG.height - 64, 0, "Psych Online v" + Main.PSYCH_ONLINE_VERSION, 12);
+		var versionShit:FlxText = new FlxText(12, FlxG.height - 64, 0, "Psych Online v" + psychOnlineVersion, 12);
 		versionShit.scrollFactor.set();
 		versionShit.setFormat("VCR OSD Mono", 16, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 		add(versionShit);
@@ -197,7 +198,7 @@ class MainMenuState extends MusicBeatState
 			{
 				selectedSomethin = true;
 				FlxG.sound.play(Paths.sound('cancelMenu'));
-				FlxG.switchState(() -> new TitleState());
+				MusicBeatState.switchState(new TitleState());
 			}
 
 			if (controls.ACCEPT)
@@ -234,28 +235,27 @@ class MainMenuState extends MusicBeatState
 								switch (daChoice)
 								{
 									case 'story_mode':
-										FlxG.switchState(() -> new StoryMenuState());
+										MusicBeatState.switchState(new StoryMenuState());
 									case 'freeplay':
-										FlxG.switchState(() -> new FreeplayState());
+										MusicBeatState.switchState(new FreeplayState());
 									#if MODS_ALLOWED
 									case 'mods':
-										FlxG.switchState(() -> new ModsMenuState());
+										MusicBeatState.switchState(new ModsMenuState());
 									#end
 									case 'awards':
-										FlxG.switchState(() -> new AchievementsMenuState());
+										MusicBeatState.switchState(new AchievementsMenuState());
 									case 'credits':
-										FlxG.switchState(() -> new CreditsState());
+										MusicBeatState.switchState(new CreditsState());
 									case 'options':
 										LoadingState.loadAndSwitchState(new OptionsState());
 										OptionsState.onPlayState = false;
-										OptionsState.onOnlineRoom = false;
 										if (PlayState.SONG != null)
 										{
 											PlayState.SONG.arrowSkin = null;
 											PlayState.SONG.splashSkin = null;
 										}
 									case 'online':
-										FlxG.switchState(() -> new OnlineState());
+										MusicBeatState.switchState(new Lobby());
 								}
 							});
 						}
@@ -266,7 +266,7 @@ class MainMenuState extends MusicBeatState
 			else if (controls.justPressed('debug_1'))
 			{
 				selectedSomethin = true;
-				FlxG.switchState(() -> new MasterEditorMenu());
+				MusicBeatState.switchState(new MasterEditorMenu());
 			}
 			#end
 		}

@@ -5,7 +5,7 @@ package externs;
 // https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/apply-windows-themes
 // https://github.com/FNF-CNE-Devs/CodenameEngine/blob/main/source/funkin/backend/utils/native/Windows.hx
 
-#if (windows && cpp)
+#if windows
 @:buildXml('
 <target id="haxe">
 	<lib name="dwmapi.lib" if="windows" />
@@ -23,7 +23,7 @@ HICON hWindowIconBig = NULL;
 ')
 #end
 class WinAPI {
-	#if (windows && cpp)
+    #if windows
     @:functionCode('
     HWND window = FindWindowA(NULL, title.c_str());
 	if (window == NULL) 
@@ -42,7 +42,7 @@ class WinAPI {
     #end
     public static function setDarkMode(title:String, enabled:Bool):Void {}
 
-	#if (windows && cpp)
+    #if windows
     @:functionCode('
     HWND window = FindWindowA(NULL, title.c_str());
 	if (window == NULL) 
@@ -70,19 +70,4 @@ class WinAPI {
     ')
     #end
 	public static function setIcon(title:String, stricon:String):Void {}
-
-    // TaskDialog doesn't work on haxe for some reason
-	#if (windows && cpp)
-	@:functionCode('
-    int msgboxID = MessageBox(NULL, content.c_str(), title.c_str(), MB_ICONERROR | MB_OKCANCEL | MB_DEFBUTTON2);
-    switch (msgboxID) {
-    	case IDOK:
-            yesCallback();
-    		break;
-    	case IDCANCEL:
-    		break;
-    }
-    ')
-	#end
-	public static function alert(title:String, content:String, yesCallback:Void->Void):Void {}
 }

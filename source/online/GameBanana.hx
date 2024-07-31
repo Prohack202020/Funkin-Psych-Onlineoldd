@@ -1,12 +1,7 @@
 package online;
 
-import online.states.RequestState;
-import openfl.utils.ByteArray;
-import openfl.display.PNGEncoderOptions;
-import openfl.geom.Rectangle;
-import openfl.display.BitmapData;
-import lime.system.System;
-import states.ModsMenuState.ModMetadata;
+import online.states.OpenURL;
+import online.states.Room;
 import backend.Song;
 import haxe.crypto.Md5;
 import haxe.zip.Entry;
@@ -25,197 +20,114 @@ typedef GBMod = {
 	var game:String;
 	var trashed:Bool;
 	var withheld:Bool;
-	var rootCategory:String;
-	var downloadCount:Float;
-	var likes:Float;
-	var screenshots:Array<GBImage>;
-}
-
-typedef GBSub = {
-	var _idRow:Float;
-	var _sModelName:String;
-	var _sName:String;
-	var _sProfileUrl:String;
-	var _aPreviewMedia:GBPrevMedia;
-	var _aRootCategory:GBCategory;
-	var _sVersion:String;
-	var _aGame:GBGame;
-	var _nLikeCount:Null<Float>; // "null cant be used as int!!!" then why does this return null instead of 0
-}
-
-typedef GBGame = {
-	var _idRow:Float;
-}
-
-typedef GBPrevMedia = {
-	var _aImages:Array<GBImage>;
-}
-
-typedef GBImage = {
-	var _sBaseUrl:String;
-	var _sFile:String;
-	var _sFile220:String; //only on the first
-	var _wFile220:Int;
-	var _hFile220:Int;
-	var _sFile100:String;
-}
-
-typedef GBCategory = {
-	var _sName:String;
-	var _sIconUrl:String;
 }
 
 typedef DownloadProp = {
 	var _sFile:String;
-	var _nFilesize:Float;
-	var _sDescription:String;
 	var _sAnalysisState:String;
 	var _sDownloadUrl:String;
 	var _bContainsExe:Bool;
 }
 
-typedef AltDownload = {
-	var url:String;
-	var description:String;
-}
-
-typedef DownloadPage = {
-	var _bIsTrashed:Bool;
-	var _bIsWithheld:Bool;
-	var _aFiles:Array<DownloadProp>;
-	var _aAlternateFileSources:Array<AltDownload>;
-}
-
 class GameBanana {
-	public static function searchMods(?search:String, page:Int, ?sortOrder:String = "default", response:(mods:Array<GBSub>, err:Dynamic) -> Void) {
-		Thread.run(() -> {
-			var http = new Http(
-			'https://gamebanana.com/apiv11/Game/8694/Subfeed?_nPage=${page}&_sSort=${sortOrder}&_csvModelInclusions=Mod' + (search != null ? '&_sName=$search' : '')
-			);
+	public static function getMod(id:String, response:(mod:GBMod, err:Dynamic)->Void) {
+		var http = new Http(
+		"https://api.gamebanana.com/Core/Item/Data?itemtype=Mod&itemid=" + id + 
+        "&fields=name,description,Files().aFiles(),Url().sDownloadUrl(),Game().name,Trash().bIsTrashed(),Withhold().bIsWithheld()"
+        );
 
-			http.onData = function(data:String) {
-				Waiter.put(() -> {
-					var json:Dynamic = Json.parse(data);
-					response(cast(json._aRecords), json._sErrorCode != null ? json._sErrorMessage : null);
-				});
-			}
+		http.onData = function(data:String) {
+			var arr:Array<Dynamic> = Json.parse(data);
+            
+			response({
+				_id: id,
+				name: arr[0],
+				description: arr[1],
+				downloads: arr[2],
+				pageDownload: arr[3],
+				game: arr[4],
+				trashed: arr[5],
+				withheld: arr[6]
+            }, null);
+		}
 
-			http.onError = function(error) {
-				Waiter.put(() -> {
-					response(null, error);
-				});
-			}
+		http.onError = function(error) {
+			response(null, error);
+		}
 
-			http.request();
-		});
-	}
-
-	public static function listCollection(id:String, page:Int, response:(mods:Array<GBSub>, err:Dynamic) -> Void) {
-		Thread.run(() -> {
-			var http = new Http(
-			'https://gamebanana.com/apiv11/Collection/${id}/Items?_nPage=${page}&_nPerpage=15'
-			);
-
-			http.onData = function(data:String) {
-				Waiter.put(() -> {
-					var json:Dynamic = Json.parse(data);
-					response(cast(json._aRecords), json._sErrorCode != null ? json._sErrorMessage : null);
-				});
-			}
-
-			http.onError = function(error) {
-				Waiter.put(() -> {
-					response(null, error);
-				});
-			}
-
-			http.request();
-		});
-	}
-
-	public static function getMod(id:String, response:(mod:GBMod, err:Dynamic)->Void, ?threaded:Bool = true) {
-		var func = () -> {
-			var http = new Http(
-			"https://api.gamebanana.com/Core/Item/Data?itemtype=Mod&itemid=" + id + 
-			"&fields=name,description,Files().aFiles(),Url().sDownloadUrl(),Game().name,Trash().bIsTrashed(),Withhold().bIsWithheld(),RootCategory().name,downloads,likes,screenshots"
-			);
-
-			http.onData = function(data:String) {
-				var arr:Array<Dynamic> = Json.parse(data);
-				
-				response({
-					_id: id,
-					name: arr[0],
-					description: arr[1],
-					downloads: arr[2],
-					pageDownload: arr[3],
-					game: arr[4],
-					trashed: arr[5],
-					withheld: arr[6],
-					rootCategory: arr[7],
-					downloadCount: arr[8],
-					likes: arr[9],
-					screenshots: Json.parse(arr[10])
-				}, null);
-			}
-
-			http.onError = function(error) {
-				response(null, error);
-			}
-
-			http.request();
-		};
-		if (threaded)
-			Thread.run(func);
-		else
-			func();
+		http.request();
     }
 
-	public static function getModDownloads(modID:Float, response:(downloads:DownloadPage, err:Dynamic) -> Void) {
-		Thread.run(() -> {
-			var http = new Http('https://gamebanana.com/apiv11/Mod/$modID/DownloadPage');
-
-			http.onData = function(data:String) {
-				Waiter.put(() -> {
-					var json:Dynamic = Json.parse(data);
-					response(cast(json), json._sErrorCode != null ? json._sErrorMessage : null);
-				});
-			}
-
-			http.onError = function(error) {
-				Waiter.put(() -> {
-					response(null, error);
-				});
-			}
-
-			http.request();
-		});
-	}
-
-	public static function downloadMod(mod:GBMod, ?onSuccess:String->Void) {
+    public static function downloadMod(mod:GBMod) {
         if (mod.trashed || mod.withheld) {
 			Alert.alert("Failed to download!", "That mod is deleted!");
 			return;
         }
 
         var daModUrl:String = null;
-		var dlFileName:String = null;
-		var dlCount:Int = -1;
 		for (_download in Reflect.fields(mod.downloads)) {
 			var download = Reflect.field(mod.downloads, _download);
-			if (FileUtils.isArchiveSupported(download._sFile) /*&& download._bContainsExe == false*/ && download._sClamAvResult == "clean" && download._nDownloadCount >= dlCount) {
+			if (StringTools.endsWith(download._sFile, ".zip") && download._bContainsExe == false && download._sClamAvResult == "clean") {
 				daModUrl = download._sDownloadUrl;
-				dlFileName = download._sFile;
-				dlCount = download._nDownloadCount;
+                break;
             }
         }
 
-		if (daModUrl == null) {
-			Alert.alert("Failed to download!", "Unsupported file archive type!\n(Only ZIP, TAR, TGZ, RAR archives are supported!)");
-			RequestState.requestURL(mod.pageDownload, "The following mod needs to be installed from this source", true);
-			return;
-		}
+        if (daModUrl != null) {
+			new Downloader().download(daModUrl, daModUrl, (fileName) -> {
+				var file = File.read(fileName, true);
+				var zipFiles = Reader.readZip(file);
+				file.close();
+                var beginFolder = "";
+				var parentFolder = Paths.mods();
+				for (entry in zipFiles) {
+					if (StringTools.endsWith(entry.fileName, "/songs/")) {
+						beginFolder = entry.fileName.substring(0, entry.fileName.length - "/songs/".length);
+						var splat = beginFolder.split("/");
+						parentFolder += splat[splat.length - 1];
+                        break;
+                    }
+				}
+				for (entry in zipFiles) {
+					_unzip(entry, beginFolder, parentFolder);
+				}
+				FileSystem.deleteFile(fileName);
+				OnlineMods.saveModURL(parentFolder.substring(Paths.mods().length), "https://gamebanana.com/mods/" + mod._id);
+				Waiter.put(() -> {
+					Alert.alert("Completed the download!", "Downloaded mod: " + parentFolder);
 
-		OnlineMods.startDownloadMod(dlFileName, daModUrl, mod, onSuccess);
+					if (Mods.getModDirectories().contains(GameClient.room.state.modDir)) {
+						Mods.currentModDirectory = GameClient.room.state.modDir;
+						GameClient.send("verifyChart", Md5.encode(Song.loadRawSong(GameClient.room.state.song, GameClient.room.state.folder)));
+					}
+				});
+            }, mod);
+		}
+        else {
+			Alert.alert("Failed to download!", "Unsupported file archive type!\n(Only ZIP archives are supported!)");
+			OpenURL.open(mod.pageDownload, "The following mod needs to be installed from this source");
+            return;
+        }
     }
+
+	private static function _unzip(entry:Entry, begins:String, newParent:String) {
+        if (!StringTools.startsWith(entry.fileName, begins)) {
+            return;
+        }
+
+		if (entry.fileName.endsWith("/")) {
+			_unzipFolder(entry, begins, newParent);
+		}
+		else {
+			_unzipFile(entry, begins, newParent);
+		}
+	}
+
+	private static function _unzipFolder(entry:Entry, begins:String, newParent:String) {
+		FileSystem.createDirectory(newParent + entry.fileName.substring(begins.length, entry.fileName.length));
+	}
+
+	private static function _unzipFile(entry:Entry, begins:String, newParent:String) {
+		File.saveBytes(newParent + entry.fileName.substring(begins.length, entry.fileName.length), Reader.unzip(entry));
+	}
 }

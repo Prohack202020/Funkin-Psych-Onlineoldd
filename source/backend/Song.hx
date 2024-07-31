@@ -109,14 +109,13 @@ class Song
 
 		if (rawJson == null) {
 			#if sys
-			if (FileSystem.exists(Paths.json(formattedFolder + '/' + formattedSong)))
-				rawJson = File.getContent(Paths.json(formattedFolder + '/' + formattedSong));
+			rawJson = File.getContent(Paths.json(formattedFolder + '/' + formattedSong));
 			#else
 			rawJson = Assets.getText(Paths.json(formattedFolder + '/' + formattedSong));
 			#end
 
 			if (rawJson == null) {
-				throw new haxe.Exception("Missing file: " + Paths.json(formattedFolder + '/' + formattedSong));
+				return "null";
 			}
 
 			rawJson = rawJson.trim();

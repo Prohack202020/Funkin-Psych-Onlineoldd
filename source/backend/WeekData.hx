@@ -82,11 +82,8 @@ class WeekData {
 		this.fileName = fileName;
 	}
 
-	public static function reloadWeekFiles(?isStoryMode:Null<Bool> /*= false*/)
+	public static function reloadWeekFiles(isStoryMode:Null<Bool> = false)
 	{
-		if (isStoryMode == null) // dead code btw
-			isStoryMode = PlayState.isStoryMode;
-
 		weeksList = [];
 		weeksLoaded.clear();
 		#if MODS_ALLOWED
@@ -115,12 +112,7 @@ class WeekData {
 						}
 						#end
 
-						if (
-							weekFile != null && (
-								(/*online.GameClient.isConnected() &&*/ !isStoryMode) || //freeplay unlocked patched ad free
-								((isStoryMode && !weekFile.hideStoryMode) || (!isStoryMode && !weekFile.hideFreeplay))
-							)
-						) {
+						if(weekFile != null && (isStoryMode == null || (isStoryMode && !weekFile.hideStoryMode) || (!isStoryMode && !weekFile.hideFreeplay))) {
 							weeksLoaded.set(sexList[i], weekFile);
 							weeksList.push(sexList[i]);
 						}
@@ -139,7 +131,7 @@ class WeekData {
 					var path:String = directory + daWeek + '.json';
 					if(sys.FileSystem.exists(path))
 					{
-						addWeek(isStoryMode, daWeek, path, directories[i], i, originalLength);
+						addWeek(daWeek, path, directories[i], i, originalLength);
 					}
 				}
 
@@ -148,7 +140,7 @@ class WeekData {
 					var path = haxe.io.Path.join([directory, file]);
 					if (!sys.FileSystem.isDirectory(path) && file.endsWith('.json'))
 					{
-						addWeek(isStoryMode, file.substr(0, file.length - 5), path, directories[i], i, originalLength);
+						addWeek(file.substr(0, file.length - 5), path, directories[i], i, originalLength);
 					}
 				}
 			}
@@ -156,7 +148,7 @@ class WeekData {
 		#end
 	}
 
-	private static function addWeek(isStoryMode:Bool, weekToCheck:String, path:String, directory:String, i:Int, originalLength:Int)
+	private static function addWeek(weekToCheck:String, path:String, directory:String, i:Int, originalLength:Int)
 	{
 		if(!weeksLoaded.exists(weekToCheck))
 		{
@@ -170,9 +162,7 @@ class WeekData {
 					weekFile.folder = directory.substring(Paths.mods().length, directory.length-1);
 					#end
 				}
-				if(
-					(/*online.GameClient.isConnected() &&*/ !isStoryMode) || // freeplay unlocked patched ad free
-					((isStoryMode && !weekFile.hideStoryMode) || (!isStoryMode && !weekFile.hideFreeplay)))
+				if((PlayState.isStoryMode && !weekFile.hideStoryMode) || (!PlayState.isStoryMode && !weekFile.hideFreeplay))
 				{
 					weeksLoaded.set(weekToCheck, weekFile);
 					weeksList.push(weekToCheck);

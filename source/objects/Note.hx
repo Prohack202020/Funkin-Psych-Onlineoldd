@@ -92,7 +92,7 @@ class Note extends FlxSprite
 	public var offsetX:Float = 0;
 	public var offsetY:Float = 0;
 	public var offsetAngle:Float = 0;
-	public var multAlpha(default, set):Float = 1;
+	public var multAlpha:Float = 1;
 	public var multSpeed(default, set):Float = 1;
 
 	public var copyX:Bool = true;
@@ -427,8 +427,8 @@ class Note extends FlxSprite
 
 		if (tooLate && !inEditor)
 		{
-			if (noteAlpha > 0.3)
-				noteAlpha = 0.3;
+			if (alpha > 0.3)
+				alpha = 0.3;
 		}
 	}
 
@@ -438,11 +438,8 @@ class Note extends FlxSprite
 		_lastValidChecked = '';
 	}
 
-	var following:StrumNote = null;
 	public function followStrumNote(myStrum:StrumNote, fakeCrochet:Float, songSpeed:Float = 1)
 	{
-		following = myStrum;
-
 		var strumX:Float = myStrum.x;
 		var strumY:Float = myStrum.y;
 		var strumAngle:Float = myStrum.angle;
@@ -457,24 +454,23 @@ class Note extends FlxSprite
 			angle = strumDirection - 90 + strumAngle + offsetAngle;
 
 		if(copyAlpha)
-			noteAlpha = strumAlpha * multAlpha;
+			alpha = strumAlpha * multAlpha;
 
 		if(copyX)
-			followX = strumX + offsetX + Math.cos(angleDir) * distance;
+			x = strumX + offsetX + Math.cos(angleDir) * distance;
 
 		if(copyY)
 		{
-			followY = strumY + offsetY + correctionOffset + Math.sin(angleDir) * distance;
+			y = strumY + offsetY + correctionOffset + Math.sin(angleDir) * distance;
 			if(myStrum.downScroll && isSustainNote)
 			{
 				if(PlayState.isPixelStage)
 				{
-					followY = y - PlayState.daPixelZoom * 9.5;
+					y -= PlayState.daPixelZoom * 9.5;
 				}
-				followY = y - (frameHeight * scale.y) - (Note.swagWidth / 2);
+				y -= (frameHeight * scale.y) - (Note.swagWidth / 2);
 			}
 		}
-
 	}
 
 	public function clipToStrumNote(myStrum:StrumNote)
@@ -504,51 +500,4 @@ class Note extends FlxSprite
 			clipRect = swagRect;
 		}
 	}
-
-	override function set_visible(value:Bool):Bool {
-		if (following != null && ClientPrefs.data.disableStrumMovement) {
-			return super.set_visible(following.visible);
-		}
-		return super.set_visible(value);
-	}
-
-	override function set_alpha(value:Float):Float {
-		if (following != null && ClientPrefs.data.disableStrumMovement) {
-			return super.set_alpha(following.alpha);
-		}
-		return super.set_alpha(value);
-	}
-
-	override function set_x(value:Float):Float {
-		if (following != null && ClientPrefs.data.disableStrumMovement) {
-			return x;
-		}
-		return super.set_x(value);
-	}
-
-	override function set_y(value:Float):Float {
-		if (following != null && ClientPrefs.data.disableStrumMovement) {
-			return y;
-		}
-		return super.set_y(value);
-	}
-
-	function set_multAlpha(value:Float):Float {
-		if (following != null && ClientPrefs.data.disableStrumMovement) {
-			return multAlpha;
-		}
-		return multAlpha = value;
-	}
-
-	@:unreflective public var followX(get, set):Float;
-	@:unreflective function get_followX():Float { return x; }
-	@:unreflective function set_followX(value:Float):Float { return super.set_x(value); }
-
-	@:unreflective public var followY(get, set):Float;
-	@:unreflective function get_followY():Float { return y; }
-	@:unreflective function set_followY(value:Float):Float { return super.set_y(value); }
-
-	@:unreflective public var noteAlpha(get, set):Float;
-	@:unreflective function get_noteAlpha():Float { return alpha; }
-	@:unreflective function set_noteAlpha(value:Float):Float { return super.set_alpha(value); }
 }

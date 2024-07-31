@@ -14,7 +14,7 @@ import flixel.graphics.FlxGraphic;
 import flixel.graphics.frames.FlxFramesCollection;
 import flixel.graphics.frames.FlxFrame;
 
-#if !(flash || html5)
+#if desktop
 import sys.FileSystem;
 import sys.io.File;
 #else
@@ -47,6 +47,7 @@ class AtlasFrameMaker extends FlxFramesCollection
 		if (Paths.fileExists('images/$key/spritemap1.json', TEXT))
 		{
 			PlayState.instance.addTextToDebug("Only Spritemaps made with Adobe Animate 2018 are supported", FlxColor.RED);
+			trace("Only Spritemaps made with Adobe Animate 2018 are supported");
 			return null;
 		}
 
@@ -63,6 +64,7 @@ class AtlasFrameMaker extends FlxFramesCollection
 			_excludeArray = t.getFrameLabels();
 			//trace('creating all anims');
 		}
+		trace('Creating: ' + _excludeArray);
 
 		frameCollection = new FlxFramesCollection(graphic, FlxFrameCollectionType.IMAGE);
 		for(x in _excludeArray)

@@ -11,9 +11,6 @@ class Waiter extends FlxBasic {
         queue.push(func);
     }
 
-    public static var pingServer:String;
-    static var _elapsedPing:Float = 0;
-
     override function update(elapsed) {
         super.update(elapsed);
 
@@ -22,15 +19,6 @@ class Waiter extends FlxBasic {
             
 			if (_queueItem != null) {
 				_queueItem();
-            }
-        }
-
-		if (pingServer != null) {
-			_elapsedPing += elapsed;
-
-            if (_elapsedPing >= 20) {
-				_elapsedPing = 0;
-				GameClient.getServerPlayerCount(pingServer);
             }
         }
     }

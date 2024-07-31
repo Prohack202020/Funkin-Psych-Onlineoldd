@@ -126,7 +126,7 @@
 	"image": "characters/tankmanCaptain",
 	"position": [
 		0,
-		200
+		240
 	],
 	"healthicon": "tankman",
 	"flip_x": true,

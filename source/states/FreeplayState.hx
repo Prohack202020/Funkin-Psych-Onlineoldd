@@ -1,6 +1,5 @@
 package states;
 
-import online.ChatBox;
 import online.Alert;
 import online.Waiter;
 import haxe.crypto.Md5;
@@ -53,18 +52,8 @@ class FreeplayState extends MusicBeatState
 	var missingTextBG:FlxSprite;
 	var missingText:FlxText;
 
-	var prevPauseGame = false;
-
-	var chatBox:ChatBox;
-
-	var listening:Bool = false;
-
 	override function create()
 	{
-		prevPauseGame = FlxG.autoPause;
-
-		FlxG.autoPause = false;
-
 		//Paths.clearStoredMemory();
 		//Paths.clearUnusedMemory();
 		
@@ -72,7 +61,7 @@ class FreeplayState extends MusicBeatState
 		PlayState.isStoryMode = false;
 		WeekData.reloadWeekFiles(false);
 
-		#if DISCORD_ALLOWED
+		#if desktop
 		// Updating Discord Rich Presence
 		DiscordClient.changePresence("In the Menus", null);
 		#end
@@ -193,8 +182,11 @@ class FreeplayState extends MusicBeatState
 		updateTexts();
 
 		if (GameClient.isConnected()) {
-			add(chatBox = new ChatBox(camera));
-			GameClient.send("status", "Choosing a Song");
+			GameClient.room.onMessage("log", function(message) {
+				Waiter.put(() -> {
+					Alert.alert("New message", message);
+				});
+			});
 		}
 
 		super.create();
@@ -212,11 +204,8 @@ class FreeplayState extends MusicBeatState
 	}
 
 	function weekIsLocked(name:String):Bool {
-		return false; // always unlocked in online
-		// if (GameClient.isConnected())
-		// 	return false;
-		// var leWeek:WeekData = WeekData.weeksLoaded.get(name);
-		//return (!leWeek.startUnlocked && leWeek.weekBefore.length > 0 && (!StoryMenuState.weekCompleted.exists(leWeek.weekBefore) || !StoryMenuState.weekCompleted.get(leWeek.weekBefore)));
+		var leWeek:WeekData = WeekData.weeksLoaded.get(name);
+		return (!leWeek.startUnlocked && leWeek.weekBefore.length > 0 && (!StoryMenuState.weekCompleted.exists(leWeek.weekBefore) || !StoryMenuState.weekCompleted.get(leWeek.weekBefore)));
 	}
 
 	/*public function addWeek(songs:Array<String>, weekNum:Int, weekColor:Int, ?songCharacters:Array<String>)
@@ -240,17 +229,6 @@ class FreeplayState extends MusicBeatState
 	var holdTime:Float = 0;
 	override function update(elapsed:Float)
 	{
-		Conductor.songPosition = FlxG.sound.music.time;
-
-		if (vocals != null && vocals.playing && Math.abs(vocals.time - (Conductor.songPosition - Conductor.offset)) > 20) {
-			vocals.time = FlxG.sound.music.time;
-		}
-
-		if (instPlaying != -1) {
-			var mult:Float = FlxMath.lerp(1, iconArray[instPlaying].scale.x, FlxMath.bound(1 - (elapsed * 9), 0, 1));
-			iconArray[instPlaying].scale.set(mult, mult);
-		}
-
 		if (FlxG.sound.music.volume < 0.7)
 		{
 			FlxG.sound.music.volume += 0.5 * FlxG.elapsed;
@@ -274,12 +252,6 @@ class FreeplayState extends MusicBeatState
 
 		scoreText.text = 'PERSONAL BEST: ' + lerpScore + ' (' + ratingSplit.join('.') + '%)';
 		positionHighscore();
-
-		if (chatBox != null && chatBox.focused) {
-			updateTexts(elapsed);
-			super.update(elapsed);
-			return;
-		}
 
 		var shiftMult:Int = 1;
 		if(FlxG.keys.pressed.SHIFT) shiftMult = 3;
@@ -345,14 +317,12 @@ class FreeplayState extends MusicBeatState
 			}
 			FlxG.sound.play(Paths.sound('cancelMenu'));
 			if (GameClient.isConnected()) {
-				destroyFreeplayVocals();
 				GameClient.clearOnMessage();
-				FlxG.switchState(() -> new Room());
+				MusicBeatState.switchState(new Room());
 			}
 			else {
-				FlxG.switchState(() -> new MainMenuState());
+				MusicBeatState.switchState(new MainMenuState());
 			}
-			FlxG.autoPause = prevPauseGame;
 		}
 
 		if(FlxG.keys.justPressed.CONTROL)
@@ -364,44 +334,25 @@ class FreeplayState extends MusicBeatState
 		{
 			if(instPlaying != curSelected)
 			{
-				try {
-					#if PRELOAD_ALL
-					destroyFreeplayVocals();
-					FlxG.sound.music.volume = 0;
-					Mods.currentModDirectory = songs[curSelected].folder;
-					var poop:String = Highscore.formatSong(songs[curSelected].songName.toLowerCase(), curDifficulty);
-					PlayState.SONG = Song.loadFromJson(poop, songs[curSelected].songName.toLowerCase());
-					Conductor.bpm = PlayState.SONG.bpm;
-					Conductor.mapBPMChanges(PlayState.SONG);
-					if (PlayState.SONG.needsVoices)
-						vocals = new FlxSound().loadEmbedded(Paths.voices(PlayState.SONG.song));
-					else
-						vocals = new FlxSound();
+				#if PRELOAD_ALL
+				destroyFreeplayVocals();
+				FlxG.sound.music.volume = 0;
+				Mods.currentModDirectory = songs[curSelected].folder;
+				var poop:String = Highscore.formatSong(songs[curSelected].songName.toLowerCase(), curDifficulty);
+				PlayState.SONG = Song.loadFromJson(poop, songs[curSelected].songName.toLowerCase());
+				if (PlayState.SONG.needsVoices)
+					vocals = new FlxSound().loadEmbedded(Paths.voices(PlayState.SONG.song));
+				else
+					vocals = new FlxSound();
 
-					FlxG.sound.list.add(vocals);
-					FlxG.sound.playMusic(Paths.inst(PlayState.SONG.song), 0.7);
-					vocals.play();
-					vocals.persist = true;
-					vocals.looped = true;
-					vocals.volume = 0.7;
-					instPlaying = curSelected;
-					listening = true;
-					#end
-				}
-				catch (e:Dynamic) {
-					trace('ERROR! $e');
-
-					var errorStr:String = e.toString();
-					if (errorStr.startsWith('[file_contents,assets/data/'))
-						errorStr = 'Missing file: ' + errorStr.substring(27, errorStr.length - 1); // Missing chart
-					missingText.text = 'ERROR WHILE LOADING CHART:\n$errorStr';
-					missingText.screenCenter(Y);
-					missingText.visible = true;
-					missingTextBG.visible = true;
-					FlxG.sound.play(Paths.sound('cancelMenu'));
-
-					updateTexts(elapsed);
-				}
+				FlxG.sound.list.add(vocals);
+				FlxG.sound.playMusic(Paths.inst(PlayState.SONG.song), 0.7);
+				vocals.play();
+				vocals.persist = true;
+				vocals.looped = true;
+				vocals.volume = 0.7;
+				instPlaying = curSelected;
+				#end
 			}
 		}
 
@@ -421,40 +372,23 @@ class FreeplayState extends MusicBeatState
 							GameClient.send("verifyChart", hash);
 							destroyFreeplayVocals();
 							GameClient.clearOnMessage();
-							FlxG.switchState(() -> new Room());
-							FlxG.autoPause = prevPauseGame;
+							MusicBeatState.switchState(new Room());
 						}
-						catch (exc:Dynamic) {
+						catch (exc) {
 							Sys.println(exc);
 						}
 					});
 				});
 				Mods.currentModDirectory = songs[curSelected].folder;
 				trace('Song mod directory: "${Mods.currentModDirectory}"');
-				try {
-					GameClient.send("setFSD", [
-						songLowercase,
-						poop,
-						curDifficulty,
-						Md5.encode(Song.loadRawSong(poop, songLowercase)),
-						Mods.currentModDirectory,
-						online.OnlineMods.getModURL(Mods.currentModDirectory)
-					]);
-				}
-				catch (e:Dynamic) {
-					trace('ERROR! $e');
-
-					var errorStr:String = e.toString();
-					if (errorStr.startsWith('[file_contents,assets/data/'))
-						errorStr = 'Missing file: ' + errorStr.substring(27, errorStr.length - 1); // Missing chart
-					missingText.text = 'ERROR WHILE LOADING CHART:\n$errorStr';
-					missingText.screenCenter(Y);
-					missingText.visible = true;
-					missingTextBG.visible = true;
-					FlxG.sound.play(Paths.sound('cancelMenu'));
-
-					updateTexts(elapsed);
-				}
+				GameClient.send("setFSD", [
+					songLowercase,
+					poop,
+					curDifficulty,
+					Md5.encode(Song.loadRawSong(poop, songLowercase)),
+					Mods.currentModDirectory,
+					online.OnlineMods.getModURL(Mods.currentModDirectory)
+				]);
 			}
 			else {
 				/*#if MODS_ALLOWED
@@ -496,12 +430,11 @@ class FreeplayState extends MusicBeatState
 					return;
 				}
 				LoadingState.loadAndSwitchState(new PlayState());
-				FlxG.autoPause = prevPauseGame;
 
 				FlxG.sound.music.volume = 0;
 						
 				destroyFreeplayVocals();
-				#if (MODS_ALLOWED && DISCORD_ALLOWED)
+				#if MODS_ALLOWED
 				DiscordClient.loadModRPC();
 				#end
 			}
@@ -583,8 +516,6 @@ class FreeplayState extends MusicBeatState
 		for (i in 0...iconArray.length)
 		{
 			iconArray[i].alpha = 0.6;
-			if (i != instPlaying)
-				iconArray[i].scale.set(1, 1);
 		}
 
 		iconArray[curSelected].alpha = 1;
@@ -654,11 +585,6 @@ class FreeplayState extends MusicBeatState
 			icon.visible = icon.active = true;
 			_lastVisibles.push(i);
 		}
-	}
-
-	override function beatHit() {
-		if (instPlaying != -1 && listening)
-			iconArray[instPlaying].scale.set(1.2, 1.2);
 	}
 }
 

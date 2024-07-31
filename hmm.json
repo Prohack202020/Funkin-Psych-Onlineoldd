@@ -3,17 +3,17 @@
     {
       "name": "lime",
       "type": "haxelib",
-      "version": "8.1.2"
+      "version": "8.0.2"
     },
     {
       "name": "openfl",
       "type": "haxelib",
-      "version": "9.3.3"
+      "version": "9.2.2"
     },
     {
       "name": "flixel",
       "type": "haxelib",
-      "version": "5.6.2"
+      "version": "5.5.0"
     },
     {
       "name": "flixel-addons",
@@ -53,7 +53,7 @@
     {
       "name": "SScript",
       "type": "haxelib",
-      "version": "17.0.618"
+      "version": "7.7.0"
     },
     {
       "name": "discord_rpc",
@@ -73,21 +73,6 @@
       "name": "colyseus",
       "type": "haxelib",
       "version": "0.15.2"
-    },
-    {
-      "name": "HtmlParser",
-      "type": "haxelib",
-      "version": "3.4.0"
-    },
-    {
-      "name": "unrar",
-      "type": "haxelib",
-      "version": "1.0.0"
-    },
-    {
-      "name": "away3d",
-      "type": "haxelib",
-      "version": "5.0.9"
     }
   ]
 }

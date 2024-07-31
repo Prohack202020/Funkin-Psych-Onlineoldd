@@ -13,11 +13,10 @@ class OutdatedState extends MusicBeatState
 		add(bg);
 
 		warnText = new FlxText(0, 0, FlxG.width,
-			"Sorry, but you have to update this mod
-			your current version is '" + Main.PSYCH_ONLINE_VERSION + "' while
-			the latest is '" + TitleState.updateVersion + "'\n
-			ACCEPT - Jump into the download page!
-			BACK - Continue without updating.",
+			"Sorry man but you have to update this mod\n
+			your current version is '" + MainMenuState.psychOnlineVersion + "' but\n
+			the latest is `" + TitleState.updateVersion + "`\n\n
+			Press ACCEPT to jump into the download page!",
 			32);
 		warnText.setFormat("VCR OSD Mono", 32, FlxColor.WHITE, CENTER);
 		warnText.screenCenter(Y);
@@ -40,7 +39,7 @@ class OutdatedState extends MusicBeatState
 				FlxG.sound.play(Paths.sound('cancelMenu'));
 				FlxTween.tween(warnText, {alpha: 0}, 1, {
 					onComplete: function (twn:FlxTween) {
-						FlxG.switchState(() -> new MainMenuState());
+						MusicBeatState.switchState(new MainMenuState());
 					}
 				});
 			}

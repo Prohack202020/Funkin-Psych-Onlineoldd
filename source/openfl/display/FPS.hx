@@ -45,14 +45,10 @@ class FPS extends TextField
 		currentFPS = 0;
 		selectable = false;
 		mouseEnabled = false;
-		defaultTextFormat = new TextFormat("_sans", 13, color);
-		#if HACKER
-		defaultTextFormat = new TextFormat("_sans", 16, color);
-		#end
+		defaultTextFormat = new TextFormat("_sans", 14, color);
 		autoSize = LEFT;
 		multiline = true;
 		text = "FPS: ";
-		alpha = 0.9;
 
 		cacheCount = 0;
 		currentTime = 0;
@@ -81,8 +77,7 @@ class FPS extends TextField
 
 		var currentCount = times.length;
 		currentFPS = Math.round((currentCount + cacheCount) / 2);
-		var optionFramerate = ClientPrefs.data.unlockFramerate ? 999 : ClientPrefs.data.framerate;
-		if (currentFPS > optionFramerate) currentFPS = optionFramerate;
+		if (currentFPS > ClientPrefs.data.framerate) currentFPS = ClientPrefs.data.framerate;
 
 		if (currentCount != cacheCount /*&& visible*/)
 		{
@@ -91,23 +86,11 @@ class FPS extends TextField
 			
 			#if openfl
 			memoryMegas = Math.abs(FlxMath.roundDecimal(System.totalMemory / 1000000, 1));
-			text += "\nRAM: " + memoryMegas + " MB";
-			#end
-
-			#if HACKER
-			text = "";
-			text += "Frames Per Second: " + currentFPS + "\n";
-			text += "Computer Memory: " + memoryMegas + "MB\n";
-			@:privateAccess
-			text += "Graphics Card: " + Std.string(flixel.FlxG.stage.context3D.gl.getParameter(flixel.FlxG.stage.context3D.gl.RENDERER)).split("/")[0].trim() + "\n";
-			text += "Operating System: " + lime.system.System.platformLabel + " " + lime.system.System.platformName + " " + lime.system.System.platformVersion + "\n";
-			text += "Device Model: " + lime.system.System.deviceModel + " " + lime.system.System.deviceVendor + "\n";
-			text += "Number of Connected Monitors: " + lime.system.System.numDisplays + "\n";
-			text += "Game Location: " + lime.system.System.applicationDirectory + "\n";
+			text += "\nMemory: " + memoryMegas + " MB";
 			#end
 
 			textColor = 0xFFFFFFFF;
-			if (memoryMegas > 3000 || currentFPS <= optionFramerate / 2)
+			if (memoryMegas > 3000 || currentFPS <= ClientPrefs.data.framerate / 2)
 			{
 				textColor = 0xFFFF0000;
 			}

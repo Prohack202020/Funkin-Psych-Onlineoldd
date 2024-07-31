@@ -1,10 +1,5 @@
 package states;
 
-import online.Alert;
-import online.LoadingScreen;
-import online.OnlineMods;
-import online.FileUtils;
-import haxe.io.Path;
 import backend.WeekData;
 import backend.Mods;
 
@@ -46,8 +41,6 @@ class ModsMenuState extends MusicBeatState
 	var buttonTop:FlxButton;
 	var buttonDisableAll:FlxButton;
 	var buttonEnableAll:FlxButton;
-	var buttonVerify:FlxButton;
-	var buttonDelete:FlxButton;
 	var buttonUp:FlxButton;
 	var buttonToggle:FlxButton;
 	var buttonsArray:Array<FlxButton> = [];
@@ -66,7 +59,7 @@ class ModsMenuState extends MusicBeatState
 		Paths.clearUnusedMemory();
 		WeekData.setDirectoryFromWeek();
 
-		#if DISCORD_ALLOWED
+		#if desktop
 		// Updating Discord Rich Presence
 		DiscordClient.changePresence("In the Menus", null);
 		#end
@@ -220,83 +213,6 @@ class ModsMenuState extends MusicBeatState
 		buttonsArray.push(buttonEnableAll);
 		visibleWhenHasMods.push(buttonEnableAll);
 
-		startX -= 190;
-		buttonVerify = new FlxButton(startX, 0, "VERIFY", function() {
-			var modURL = OnlineMods.getModURL(modsList[curSelected][0]);
-			if (modURL == null || modURL.trim() == "") {
-				Alert.alert("No mod URL provided!", "Other players will not be able to download this mod!\nPlease set it in the Setup Mods option!");
-				FlxG.sound.play(Paths.sound('cancelMenu'), 0.6);
-				return;
-			}
-			var oldModName = modsList[curSelected][0];
-			OnlineMods.downloadMod(modURL, modName -> {
-				if (modName != oldModName) {
-					Sys.println("names conflict: " + modName + " to " + oldModName);
-					var list:ModsList = Mods.parseList();
-					var swagMods:Array<Dynamic> = [];
-					for (mod in list.all) swagMods.push([mod, list.enabled.contains(mod)]);
-					swagMods.remove(oldModName);
-					saveTxt(swagMods);
-					FileUtils.removeFiles(haxe.io.Path.join([Paths.mods(), oldModName]));
-				}
-				Mods.updatedOnState = false;
-				FlxG.switchState(() -> new ModsMenuState());
-			});
-		});
-		buttonVerify.setGraphicSize(170, 50);
-		buttonVerify.updateHitbox();
-		buttonVerify.label.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.BLACK, CENTER);
-		buttonVerify.label.fieldWidth = 170;
-		setAllLabelsOffset(buttonVerify, 0, 10);
-		add(buttonVerify);
-		buttonsArray.push(buttonVerify);
-		visibleWhenHasMods.push(buttonVerify);
-
-		startX -= 190;
-		buttonDelete = new FlxButton(startX, 0, "DELETE", function() {
-			var path = haxe.io.Path.join([Paths.mods(), modsList[curSelected][0]]);
-			if(FileSystem.exists(path) && FileSystem.isDirectory(path))
-			{
-				trace('Trying to delete directory ' + path);
-				try
-				{
-					FileUtils.removeFiles(path);
-
-					var icon = mods[curSelected].icon;
-					var alphabet = mods[curSelected].alphabet;
-					remove(icon);
-					remove(alphabet);
-					icon.destroy();
-					alphabet.destroy();
-					modsList.remove(modsList[curSelected]);
-					mods.remove(mods[curSelected]);
-
-					if (curSelected >= mods.length && curSelected != 0) --curSelected;
-					changeSelection();
-
-					saveTxt(modsList);
-				}
-				catch(e)
-				{
-					trace('Error deleting directory: ' + e);
-				}
-
-				if (mods.length <= 0) {
-					selector.sprTracker = null;
-				}
-			}
-			FlxG.sound.play(Paths.sound('cancelMenu'), 0.6);
-		});
-		buttonDelete.setGraphicSize(170, 50);
-		buttonDelete.updateHitbox();
-		buttonDelete.label.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.BLACK, CENTER);
-		buttonDelete.label.fieldWidth = 170;
-		buttonDelete.color = FlxColor.RED;
-		setAllLabelsOffset(buttonDelete, 0, 10);
-		add(buttonDelete);
-		buttonsArray.push(buttonDelete);
-		visibleWhenHasMods.push(buttonDelete);
-
 		// more buttons
 		var startX:Int = 1100;
 
@@ -313,46 +229,43 @@ class ModsMenuState extends MusicBeatState
 		setAllLabelsOffset(installButton, 2, 24);
 		add(installButton);
 		startX -= 180;
-		*/
 
-		// removeButton = new FlxButton(startX, 620, "Delete Selected Mod", function()
-		// {
-		// 	var path = haxe.io.Path.join([Paths.mods(), modsList[curSelected][0]]);
-		// 	if(FileSystem.exists(path) && FileSystem.isDirectory(path))
-		// 	{
-		// 		trace('Trying to delete directory ' + path);
-		// 		try
-		// 		{
-		// 			FileUtils.removeFiles(path);
+		removeButton = new FlxButton(startX, 620, "Delete Selected Mod", function()
+		{
+			var path = haxe.io.Path.join([Paths.mods(), modsList[curSelected][0]]);
+			if(FileSystem.exists(path) && FileSystem.isDirectory(path))
+			{
+				trace('Trying to delete directory ' + path);
+				try
+				{
+					FileSystem.deleteFile(path); //FUCK YOU HAXE WHY DONT YOU WORK WAAAAAAAAAAAAH
 
-		// 			var icon = mods[curSelected].icon;
-		// 			var alphabet = mods[curSelected].alphabet;
-		// 			remove(icon);
-		// 			remove(alphabet);
-		// 			icon.destroy();
-		// 			alphabet.destroy();
-		// 			modsList.remove(modsList[curSelected]);
-		// 			mods.remove(mods[curSelected]);
+					var icon = mods[curSelected].icon;
+					var alphabet = mods[curSelected].alphabet;
+					remove(icon);
+					remove(alphabet);
+					icon.destroy();
+					alphabet.destroy();
+					modsList.remove(modsList[curSelected]);
+					mods.remove(mods[curSelected]);
 
-		// 			if(curSelected >= mods.length) --curSelected;
-		// 			changeSelection();
-		// 		}
-		// 		catch(e)
-		// 		{
-		// 			trace('Error deleting directory: ' + e);
-		// 		}
-
-		// 		if (mods.length <= 0) {
-		// 			selector.sprTracker = null;
-		// 		}
-		// 	}
-		// });
-		// removeButton.setGraphicSize(150, 70);
-		// removeButton.updateHitbox();
-		// removeButton.color = FlxColor.RED;
-		// removeButton.label.fieldWidth = 135;
-		// removeButton.label.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, CENTER);
-		// setAllLabelsOffset(removeButton, 2, 15);
+					if(curSelected >= mods.length) --curSelected;
+					changeSelection();
+				}
+				catch(e)
+				{
+					trace('Error deleting directory: ' + e);
+				}
+			}
+		});
+		removeButton.setGraphicSize(150, 70);
+		removeButton.updateHitbox();
+		removeButton.color = FlxColor.RED;
+		removeButton.label.fieldWidth = 135;
+		removeButton.label.setFormat(Paths.font("vcr.ttf"), 16, FlxColor.WHITE, CENTER);
+		setAllLabelsOffset(removeButton, 2, 15);
+		add(removeButton);
+		visibleWhenHasMods.push(removeButton);*/
 
 		///////
 		descriptionTxt = new FlxText(148, 0, FlxG.width - 216, "", 32);
@@ -407,9 +320,6 @@ class ModsMenuState extends MusicBeatState
 			add(newMod.icon);
 			i++;
 		}
-
-		// add(removeButton);
-		// visibleWhenHasMods.push(removeButton);
 
 		if(curSelected >= mods.length) curSelected = 0;
 
@@ -483,7 +393,7 @@ class ModsMenuState extends MusicBeatState
 		}
 	}
 
-	static function saveTxt(modsList:Array<Dynamic>)
+	function saveTxt()
 	{
 		var fileStr:String = '';
 		for (values in modsList)
@@ -514,10 +424,10 @@ class ModsMenuState extends MusicBeatState
 			}
 			FlxG.sound.play(Paths.sound('cancelMenu'));
 			FlxG.mouse.visible = false;
-			saveTxt(modsList);
+			saveTxt();
 			if(needaReset)
 			{
-				//FlxG.switchState(() -> new TitleState());
+				//MusicBeatState.switchState(new TitleState());
 				TitleState.initialized = false;
 				TitleState.closedState = false;
 				FlxG.sound.music.fadeOut(0.3);
@@ -530,7 +440,7 @@ class ModsMenuState extends MusicBeatState
 			}
 			else
 			{
-				FlxG.switchState(() -> new MainMenuState());
+				MusicBeatState.switchState(new MainMenuState());
 			}
 		}
 

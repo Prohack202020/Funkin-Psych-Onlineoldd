@@ -139,8 +139,7 @@ class PauseSubState extends MusicBeatSubstate
 		add(missingText);
 
 		regenMenu();
-		//cameras = [FlxG.cameras.list[FlxG.cameras.list.length - 1]];
-		cameras = [PlayState.instance.camOther];
+		cameras = [FlxG.cameras.list[FlxG.cameras.list.length - 1]];
 	}
 
 	var holdTime:Float = 0;
@@ -209,7 +208,7 @@ class PauseSubState extends MusicBeatSubstate
 						var poop = Highscore.formatSong(name, curSelected);
 						PlayState.SONG = Song.loadFromJson(poop, name);
 						PlayState.storyDifficulty = curSelected;
-						FlxG.switchState(new PlayState());
+						MusicBeatState.resetState();
 						FlxG.sound.music.volume = 0;
 						PlayState.changedDifficulty = true;
 						PlayState.chartingMode = false;
@@ -281,7 +280,7 @@ class PauseSubState extends MusicBeatSubstate
 				case 'Options':
 					PlayState.instance.paused = true; // For lua
 					PlayState.instance.vocals.volume = 0;
-					FlxG.switchState(() -> new OptionsState());
+					MusicBeatState.switchState(new OptionsState());
 					if(ClientPrefs.data.pauseMusic != 'None')
 					{
 						FlxG.sound.playMusic(Paths.music(Paths.formatToSongPath(ClientPrefs.data.pauseMusic)), pauseMusic.volume);
@@ -289,17 +288,16 @@ class PauseSubState extends MusicBeatSubstate
 						FlxG.sound.music.time = pauseMusic.time;
 					}
 					OptionsState.onPlayState = true;
-					OptionsState.onOnlineRoom = false;
 				case "Exit to menu":
-					#if DISCORD_ALLOWED DiscordClient.resetClientID(); #end
+					#if desktop DiscordClient.resetClientID(); #end
 					PlayState.deathCounter = 0;
 					PlayState.seenCutscene = false;
 
 					Mods.loadTopMod();
 					if(PlayState.isStoryMode) {
-						FlxG.switchState(() -> new StoryMenuState());
+						MusicBeatState.switchState(new StoryMenuState());
 					} else {
-						FlxG.switchState(() -> new FreeplayState());
+						MusicBeatState.switchState(new FreeplayState());
 					}
 					PlayState.cancelMusicFadeTween();
 					FlxG.sound.playMusic(Paths.music('freakyMenu'));
@@ -333,8 +331,7 @@ class PauseSubState extends MusicBeatSubstate
 			FlxTransitionableState.skipNextTransIn = true;
 			FlxTransitionableState.skipNextTransOut = true;
 		}
-		// FlxG.resetState(); // yeah baby!!! more haxeflixel bugs!
-		FlxG.switchState(new PlayState());
+		MusicBeatState.resetState();
 	}
 
 	override function destroy()
