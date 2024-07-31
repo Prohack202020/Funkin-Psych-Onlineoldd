@@ -87,7 +87,9 @@ class Lobby extends MusicBeatState {
 
 		OnlineMods.checkMods();
 
+        #if desktop
 		DiscordClient.changePresence("In online lobby.", null, null, false);
+		#end
 
 		daName = ClientPrefs.data.nickname;
 		daAddress = GameClient.serverAddress;

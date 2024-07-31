@@ -254,7 +254,7 @@ class Room extends MusicBeatState {
 
 				FlxG.sound.music.volume = 0;
 
-				#if MODS_ALLOWED
+				#if desktop
 				DiscordClient.loadModRPC();
 				#end
 			});
@@ -287,10 +287,14 @@ class Room extends MusicBeatState {
 
 		GameClient.room.state.listen("isPrivate", (value, prev) -> {
 			if (value) {
+			#if desktop
 				DiscordClient.changePresence("In a online room.", "Private room.", null, false);
+			#end
 			}
 			else {
+			#if desktop
 				DiscordClient.changePresence("In a online room.", "Public room: " + GameClient.room.roomId, null, false);
+			#end
 			}
 		});
 
@@ -332,10 +336,14 @@ class Room extends MusicBeatState {
 		if (elapsedShit >= 3) {
 			elapsedShit = 0;
 			if (GameClient.room.state.isPrivate) {
+			#if desktop
 				DiscordClient.changePresence("In a online room.", "Private room.", null, false);
+		    #end
 			}
 			else {
+			#if desktop
 				DiscordClient.changePresence("In a online room.", "Public room: " + GameClient.room.roomId, null, false);
+			#end
 			}
 		}
 
