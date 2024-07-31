@@ -2,8 +2,10 @@
   "dependencies": [
     {
       "name": "lime",
-      "type": "haxelib",
-      "version": "8.0.2"
+      "type": "git",
+      "dir": null,
+      "ref": "develop",
+      "url": "https://github.com/mcagabe19-stuff/lime.git"
     },
     {
       "name": "openfl",
@@ -32,8 +34,10 @@
     },
     {
       "name": "hxcpp",
-      "type": "haxelib",
-      "version": "4.3.2"
+      "type": "git",
+      "dir": null,
+      "ref": "master",
+      "url": "https://github.com/mcagabe19-stuff/hxcpp"
     },
     {
       "name": "tjson",
@@ -52,8 +56,10 @@
     },
     {
       "name": "SScript",
-      "type": "haxelib",
-      "version": "7.7.0"
+      "type": "git",
+      "dir": null,
+      "ref": "main",
+      "url": "https://github.com/MobilePorting/SScript-Online"
     },
     {
       "name": "discord_rpc",
@@ -83,8 +89,8 @@
       "name": "linc_luajit",
       "type": "git",
       "dir": null,
-      "ref": "master",
-      "url": "https://github.com/superpowers04/linc_luajit"
+      "ref": "main",
+      "url": "https://github.com/mcagabe19-stuff/linc_luajit-legacy"
     },
     {
       "name": "colyseus",
